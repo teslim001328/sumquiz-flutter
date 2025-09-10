@@ -13,12 +13,18 @@ SumQuiz is a mobile application designed to help users summarize text, create qu
 - **User Model:** A `UserModel` class is defined to represent user data in Firestore.
 - **Auth Service:** An `AuthService` handles all authentication logic, including creating user documents in Firestore upon successful sign-up.
 
-### Dashboard
+### Main Navigation
 
-- **Real-time Data:** The dashboard displays the user's name, subscription status, and daily usage in real-time using a `StreamBuilder` connected to Firestore.
-- **User Info:** A user information card displays the user's name, email, and subscription status.
-- **Usage Tracking:** A usage card shows the user's daily usage for summaries, quizzes, and flashcards, along with the remaining daily limits.
-- **Navigation:** The dashboard includes a navigation section with placeholders for future screens.
+- **Bottom Navigation:** A `BottomNavigationBar` with four tabs: Home, Library, Progress, and Profile.
+- **Page View:** A `PageController` manages the state of the bottom navigation bar, allowing users to swipe between screens.
+- **Dynamic AppBar:** The `AppBar` title dynamically changes based on the selected tab.
+
+### Placeholder Screens
+
+- **HomeScreen:** Contains the AI-powered tools (Summary, Quiz, Flashcards).
+- **LibraryScreen:** Displays the user's saved content.
+- **ProgressScreen:** Shows user analytics.
+- **ProfileScreen:** Displays user information and subscription status.
 
 ### Backend & Services
 
@@ -40,18 +46,18 @@ The project is organized into the following directories:
 - `lib/models`: Contains the data models, such as `user_model.dart`.
 - `lib/services`: Holds the business logic, including `auth_service.dart` and `firestore_service.dart`.
 - `lib/utils`: Includes helper functions and utilities, such as `logger.dart`.
-- `lib/views`: Contains the application's screens and widgets, such as `auth_screen.dart` and `dashboard_screen.dart`.
+- `lib/views`: Contains the application's screens and widgets.
 
-## Day 2 Plan
+## Day 3 Plan: Summary Tool UI
 
-- **Bottom Navigation:** Implement a `BottomNavigationBar` with four tabs: Home, Library, Progress, and Profile.
-- **Placeholder Screens:** Create placeholder screens for each tab:
-    - `HomeScreen`: Will contain the AI-powered tools (Summary, Quiz, Flashcards).
-    - `LibraryScreen`: Will display the user's saved content.
-    - `ProgressScreen`: Will show user analytics.
-    - `ProfileScreen`: Will display user information and subscription status.
-- **Reusable Widgets:** Create reusable widgets for the AI tool buttons on the `HomeScreen`.
-- **State Management:** Use a `PageController` to manage the state of the bottom navigation bar.
-- **AI Placeholders:** Add placeholder functions for the AI tools to be implemented later.
-- **Dynamic AppBar:** The `AppBar` title will dynamically change based on the selected tab.
-
+- **New Screen:** Create a new `SummaryScreen` widget.
+- **Input Methods:** Implement a multi-line `TextField` for text input and a button to upload a PDF file.
+- **State Management:** The screen will manage different UI states: initial, loading, error, and success.
+- **UI Components:**
+    - A header with a title and subtitle.
+    - A button to generate the summary, which will be disabled if there is no input.
+    - A loading indicator to be displayed while the summary is being generated.
+    - An error message with a retry button.
+    - A card to display the generated summary with options to copy or save it.
+- **File Picker:** Add the `file_picker` dependency to the project to enable PDF uploads.
+- **Navigation:** The `HomeScreen` will be updated to navigate to the `SummaryScreen` when the summary tool is selected.
