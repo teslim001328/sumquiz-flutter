@@ -1,20 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:myapp/views/screens/summary_screen.dart';
+import 'package:myapp/views/screens/quiz_screen.dart';
+import 'package:myapp/views/screens/flashcards_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  void generateSummary() {
-    print("Summary generation coming soon");
-  }
-
-  void generateQuiz() {
-    print("Quiz generation coming soon");
-  }
-
-  void generateFlashcards() {
-    print("Flashcards generation coming soon");
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,19 +30,34 @@ class HomeScreen extends StatelessWidget {
                     context,
                     'Summary',
                     Icons.article,
-                    generateSummary,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SummaryScreen()),
+                      );
+                    },
                   ),
                   _buildToolCard(
                     context,
                     'Quiz',
                     Icons.quiz,
-                    generateQuiz,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const QuizScreen()),
+                      );
+                    },
                   ),
                   _buildToolCard(
                     context,
                     'Flashcards',
                     Icons.style,
-                    generateFlashcards,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const FlashcardsScreen()),
+                      );
+                    },
                   ),
                 ],
               ),

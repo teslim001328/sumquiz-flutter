@@ -19,45 +19,50 @@ SumQuiz is a mobile application designed to help users summarize text, create qu
 - **Page View:** A `PageController` manages the state of the bottom navigation bar, allowing users to swipe between screens.
 - **Dynamic AppBar:** The `AppBar` title dynamically changes based on the selected tab.
 
-### Placeholder Screens
+### AI-Powered Tools
 
-- **HomeScreen:** Contains the AI-powered tools (Summary, Quiz, Flashcards).
-- **LibraryScreen:** Displays the user's saved content.
-- **ProgressScreen:** Shows user analytics.
-- **ProfileScreen:** Displays user information and subscription status.
+- **Summary Tool:** Integrated with a Google AI endpoint to generate summaries from text and PDFs. Includes usage limits and a "Save to Library" feature.
+- **Quiz Tool:** Integrated with a Google AI endpoint to generate multiple-choice quizzes from text. Includes usage limits and a "Save to Library" feature.
+- **Flashcards Tool:** Integrated with a Google AI endpoint to generate flashcards from text. Includes usage limits and a "Save to Library" feature.
+
+### Library Screen
+
+- **Tabbed Navigation:** The Library screen features a `TabBar` with three tabs: "Summaries", "Quizzes", and "Flashcards".
+- **Real-time Data:** Each tab displays a real-time list of the user's saved content from Firestore.
+- **Creation Flow:** A "Create New" button allows users to create new content, with usage limits enforced for free users.
+
+### Progress Screen
+
+- **Real-time Analytics:** The Progress screen displays real-time analytics data from Firestore, including total content created and weekly activity.
+- **Pro Subscription Lock:** Access to the Progress screen is restricted to Pro users, with a modal prompting free users to upgrade.
 
 ### Backend & Services
 
 - **Firebase Integration:** The app is fully integrated with Firebase, including Firebase Core, Firebase Auth, and Cloud Firestore.
-- **Firestore Service:** A `FirestoreService` manages all interactions with the Firestore database, including fetching user data and updating usage counts.
+- **Firestore Service:** A `FirestoreService` manages all interactions with the Firestore database, including fetching user data, updating usage counts, and saving generated content.
 - **Daily Limits:** The app enforces daily usage limits for free-tier users and includes logic to reset these limits daily.
 
 ## Design
 
 - **Material Design 3:** The app uses the latest Material Design 3 principles for a modern and visually appealing UI.
-- **Typography:** `google_fonts` is used to implement a consistent and professional typography scheme with Oswald, Roboto, and Open Sans fonts.
-- **Color Scheme:** A deep purple color scheme is used for both light and dark modes, with harmonious and accessible colors generated using `ColorScheme.fromSeed`.
+- **Typography:** `google_fonts` is used to implement a consistent and professional typography scheme.
+- **Color Scheme:** A deep purple color scheme is used for both light and dark modes.
 - **Theming:** The app includes a centralized theme configuration with custom styles for app bars and elevated buttons.
 
 ## Project Structure
 
-The project is organized into the following directories:
+The project is organized into logical directories for models, services, views, and utilities to ensure a clean and maintainable codebase.
 
-- `lib/models`: Contains the data models, such as `user_model.dart`.
-- `lib/services`: Holds the business logic, including `auth_service.dart` and `firestore_service.dart`.
-- `lib/utils`: Includes helper functions and utilities, such as `logger.dart`.
-- `lib/views`: Contains the application's screens and widgets.
+## Day 12 Plan: Offline Library Access
 
-## Day 3 Plan: Summary Tool UI
-
-- **New Screen:** Create a new `SummaryScreen` widget.
-- **Input Methods:** Implement a multi-line `TextField` for text input and a button to upload a PDF file.
-- **State Management:** The screen will manage different UI states: initial, loading, error, and success.
-- **UI Components:**
-    - A header with a title and subtitle.
-    - A button to generate the summary, which will be disabled if there is no input.
-    - A loading indicator to be displayed while the summary is being generated.
-    - An error message with a retry button.
-    - A card to display the generated summary with options to copy or save it.
-- **File Picker:** Add the `file_picker` dependency to the project to enable PDF uploads.
-- **Navigation:** The `HomeScreen` will be updated to navigate to the `SummaryScreen` when the summary tool is selected.
+- **Enable Firestore Offline Persistence:**
+    - Leverage Firestore's built-in offline caching to allow users to access their library content without an internet connection.
+    - This approach avoids the need for a separate local database and manual synchronization.
+- **Network Status Monitoring:**
+    - Add the `connectivity_plus` package to monitor the device's network status.
+    - Display a banner in the Library screen to inform the user when they are offline.
+- **Offline Functionality:**
+    - Ensure that users can view their saved summaries, quizzes, and flashcards while offline.
+    - New content created offline will be automatically saved to the local cache and synced with Firestore when the connection is restored.
+- **UI/UX Enhancements:**
+    - The UI will remain responsive, with loading indicators for data fetching and a non-intrusive offline banner.

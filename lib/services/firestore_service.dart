@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
+import '../models/quiz_question.dart';
+import '../models/flashcard_model.dart';
+import '../models/library_item.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -14,6 +17,73 @@ class FirestoreService {
 
   Future<void> updateUser(String uid, Map<String, dynamic> data) {
     return _db.collection('users').doc(uid).update(data);
+  }
+
+  Future<void> saveSummary(String userId, String summary, String title) {
+    return _db.collection('users').doc(userId).collection('summaries').add({
+      'title': title,
+      'summary': summary,
+      'created_at': Timestamp.now(),
+    });
+  }
+
+  Future<void> saveQuiz(String userId, String title, List<QuizQuestion> questions) {
+    return _db.collection('users').doc(userId).collection('quizzes').add({
+      'title': title,
+      'questions': questions.map((q) => {
+        'question': q.question,
+        'options': q.options,
+        'correct_answer': q.correctAnswer,
+      }).toList(),
+      'created_at': Timestamp.now(),
+    });
+  }
+
+  Future<void> saveFlashcards(String userId, String title, List<Flashcard> flashcards) {
+    return _db.collection('users').doc(userId).collection('flashcards').add({
+      'title': title,
+      'cards': flashcards.map((f) => {
+        'front': f.question,
+        'back': f.answer,
+      }).toList(),
+      'created_at': Timestamp.now(),
+    });
+  }
+
+  Stream<List<LibraryItem>> streamSummaries(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('summaries')
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => LibraryItem.fromFirestore(doc, 'summary'))
+            .toList());
+  }
+
+  Stream<List<LibraryItem>> streamQuizzes(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('quizzes')
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => LibraryItem.fromFirestore(doc, 'quiz'))
+            .toList());
+  }
+
+  Stream<List<LibraryItem>> streamFlashcards(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('flashcards')
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => LibraryItem.fromFirestore(doc, 'flashcards'))
+            .toList());
   }
 
   bool canGenerate(String toolType, UserModel user) {
