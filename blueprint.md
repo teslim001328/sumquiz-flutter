@@ -30,6 +30,7 @@ SumQuiz is a mobile application designed to help users summarize text, create qu
 - **Tabbed Navigation:** The Library screen features a `TabBar` with three tabs: "Summaries", "Quizzes", and "Flashcards".
 - **Real-time Data:** Each tab displays a real-time list of the user's saved content from Firestore.
 - **Creation Flow:** A "Create New" button allows users to create new content, with usage limits enforced for free users.
+- **Offline Access:** The Library screen is fully functional offline, with data automatically cached and synced with Firestore when the connection is restored.
 
 ### Progress Screen
 
@@ -53,16 +54,24 @@ SumQuiz is a mobile application designed to help users summarize text, create qu
 
 The project is organized into logical directories for models, services, views, and utilities to ensure a clean and maintainable codebase.
 
-## Day 12 Plan: Offline Library Access
+## Day 13 Plan: Payments & Subscriptions
 
-- **Enable Firestore Offline Persistence:**
-    - Leverage Firestore's built-in offline caching to allow users to access their library content without an internet connection.
-    - This approach avoids the need for a separate local database and manual synchronization.
-- **Network Status Monitoring:**
-    - Add the `connectivity_plus` package to monitor the device's network status.
-    - Display a banner in the Library screen to inform the user when they are offline.
-- **Offline Functionality:**
-    - Ensure that users can view their saved summaries, quizzes, and flashcards while offline.
-    - New content created offline will be automatically saved to the local cache and synced with Firestore when the connection is restored.
-- **UI/UX Enhancements:**
-    - The UI will remain responsive, with loading indicators for data fetching and a non-intrusive offline banner.
+- **Google Play Billing (Android):**
+    - Add the `in_app_purchase` package to handle mobile payments.
+    - Configure subscription products (`sumquiz_pro_monthly`, `sumquiz_pro_yearly`) in the Google Play Console.
+    - Implement a purchase flow that allows users to upgrade to a Pro plan.
+- **Stripe/Firebase (Web):**
+    - Integrate Stripe Checkout using the `firestore-stripe-payments` Firebase Extension for web-based payments.
+    - Create corresponding subscription products in Stripe.
+- **Firestore Sync:**
+    - Upon successful payment, update the user's document in Firestore with their subscription status (`isPro: true`, `subscription: 'pro'`), plan, and `upgradedAt` timestamp.
+    - All subscription checks will read from Firestore to ensure a consistent experience across all devices.
+- **Upgrade Flow:**
+    - Connect all "Upgrade" buttons to a new subscription screen that presents the available plans.
+    - Handle the purchase flow for both mobile and web platforms.
+- **Usage Counter Reset:**
+    - When a user upgrades, their daily usage counters will be reset to 0, and the `canGenerate` method will be updated to grant unlimited access to Pro users.
+- **UI/UX Polish:**
+    - A success dialog will be displayed after a successful purchase.
+    - A "Pro" badge will be displayed on the profile screen for Pro users.
+    - "Upgrade" buttons will be hidden for Pro users.

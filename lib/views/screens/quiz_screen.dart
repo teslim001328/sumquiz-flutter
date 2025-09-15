@@ -1,78 +1,94 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 
 import '../../models/user_model.dart';
-import '../../models/quiz_question.dart';
-import '../../services/ai_service.dart';
 import '../../services/firestore_service.dart';
+import 'upgrade_screen.dart';
 
-enum QuizState { initial, loading, error, success }
+class Question {
+  final String question;
+  final List<String> options;
+  final int correctAnswerIndex;
+
+  Question({required this.question, required this.options, required this.correctAnswerIndex});
+}
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
 
   @override
-  _QuizScreenState createState() => _QuizScreenState();
+  State<QuizScreen> createState() => _QuizScreenState();
 }
 
 class _QuizScreenState extends State<QuizScreen> {
   final TextEditingController _textController = TextEditingController();
-  String? _selectedLibraryItem;
-  QuizState _state = QuizState.initial;
-  String _errorMessage = '';
-  List<QuizQuestion> _questions = [];
+  final TextEditingController _titleController = TextEditingController();
+  final FirestoreService _firestore = FirestoreService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
+  List<Question> _questions = [];
+  int _currentQuestionIndex = 0;
+  int? _selectedAnswerIndex;
+  int _score = 0;
 
-  late final AIService _aiService;
-  late final FirestoreService _firestoreService;
+  Future<void> _generateQuiz() async {
+    final userModel = Provider.of<UserModel?>(context, listen: false);
+    if (userModel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User data not available.')),
+      );
+      return;
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    _aiService = AIService(FirebaseVertexAI.instance);
-    _firestoreService = FirestoreService();
-  }
-
-  void _generateQuiz() async {
-    final user = Provider.of<UserModel?>(context, listen: false);
-    final userModel = await _firestoreService.streamUser(user!.uid).first;
-
-    if (!_firestoreService.canGenerate('quizzes', userModel)) {
+    if (!_firestore.canGenerate('quizzes', userModel)) {
       _showUpgradeDialog();
       return;
     }
 
     setState(() {
-      _state = QuizState.loading;
+      _isLoading = true;
+      _questions = [];
+      _currentQuestionIndex = 0;
+      _selectedAnswerIndex = null;
+      _score = 0;
     });
 
     try {
-      String content = _textController.text;
-      if (_selectedLibraryItem != null) {
-        // TODO: Fetch content from library
-      }
+      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
+      final prompt =
+          'Create a multiple choice quiz from the following text. Return a JSON list of objects, where each object has a "question", an "options" list, and a "correctAnswerIndex". Text: ${_textController.text}';
+      final response = await model.generateContent([Content.text(prompt)]);
 
-      List<QuizQuestion> questions = await _aiService.generateQuiz(content);
-
-      if (questions.isEmpty) {
-        setState(() {
-          _state = QuizState.error;
-          _errorMessage = 'Could not generate a quiz from the provided text.';
-        });
-      } else {
-        await _firestoreService.incrementUsage('quizzes', user.uid);
-        setState(() {
-          _questions = questions;
-          _state = QuizState.success;
-        });
+      if (response.text != null) {
+        final jsonResponse = jsonDecode(response.text!);
+        if (jsonResponse is List) {
+          setState(() {
+            _questions = jsonResponse
+                .map((item) => Question(
+                      question: item['question'],
+                      options: List<String>.from(item['options']),
+                      correctAnswerIndex: item['correctAnswerIndex'],
+                    ))
+                .toList();
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        _state = QuizState.error;
-        _errorMessage = "An unexpected error occurred. Please try again.";
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating quiz: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        await _firestore.incrementUsage('quizzes', _auth.currentUser!.uid);
+      }
     }
   }
 
@@ -81,7 +97,7 @@ class _QuizScreenState extends State<QuizScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Upgrade to Pro'),
-        content: const Text('You have reached your daily quiz limit. Upgrade to Pro for unlimited quizzes.'),
+        content: const Text('You have reached your daily limit. Upgrade to Pro for unlimited quiz generation.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -89,8 +105,8 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // TODO: Implement navigation to upgrade screen
               Navigator.of(context).pop();
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UpgradeScreen()));
             },
             child: const Text('Upgrade'),
           ),
@@ -99,34 +115,78 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  void _retry() {
-    setState(() {
-      _state = QuizState.initial;
-      _errorMessage = '';
-    });
-  }
-
-  void _selectFromLibrary() {
-    // TODO: Implement library picker bottom sheet
-    setState(() {
-      _selectedLibraryItem = 'My Awesome Summary';
-    });
-  }
-
-  void _saveToLibrary() async {
-    final user = Provider.of<User?>(context, listen: false);
-    if (user != null) {
-      try {
-        await _firestoreService.saveQuiz(user.uid, _selectedLibraryItem ?? "Pasted Text Quiz", _questions);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quiz saved to library!')),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error saving quiz.')),
-        );
-      }
+  Future<void> _saveQuiz() async {
+    if (_questions.isEmpty || _titleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title and generate a quiz before saving.')),
+      );
+      return;
     }
+
+    try {
+      await _firestore.saveQuiz(
+        _auth.currentUser!.uid,
+        _titleController.text,
+        _questions.map((q) => {
+          'question': q.question,
+          'options': q.options,
+          'correctAnswerIndex': q.correctAnswerIndex,
+        }).toList(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Quiz saved successfully!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving quiz: $e')),
+      );
+    }
+  }
+
+  void _handleAnswer(int selectedIndex) {
+    setState(() {
+      _selectedAnswerIndex = selectedIndex;
+      if (selectedIndex == _questions[_currentQuestionIndex].correctAnswerIndex) {
+        _score++;
+      }
+    });
+
+    Future.delayed(const Duration(seconds: 1), () {
+      setState(() {
+        _selectedAnswerIndex = null;
+        if (_currentQuestionIndex < _questions.length - 1) {
+          _currentQuestionIndex++;
+        } else {
+          // End of the quiz
+          _showResultDialog();
+        }
+      });
+    });
+  }
+
+  void _showResultDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quiz Finished!'),
+        content: Text('Your score: $_score / ${_questions.length}'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _questions = [];
+                _currentQuestionIndex = 0;
+                _score = 0;
+              });
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -135,195 +195,85 @@ class _QuizScreenState extends State<QuizScreen> {
       appBar: AppBar(
         title: const Text('Generate Quiz'),
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: _buildBody(),
-          ),
-          if (_state == QuizState.loading)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: CircularProgressIndicator(),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            if (_questions.isEmpty)
+              Column(
+                children: [
+                  TextField(
+                    controller: _textController,
+                    decoration: InputDecoration(
+                      labelText: 'Enter your text here',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.paste),
+                        onPressed: () {
+                          // TODO: Implement paste from clipboard
+                        },
+                      ),
+                    ),
+                    maxLines: 5,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title for your quiz',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _generateQuiz,
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Generate Quiz'),
+                  ),
+                ],
               ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    switch (_state) {
-      case QuizState.error:
-        return _buildErrorState();
-      case QuizState.success:
-        return _buildSuccessState();
-      default:
-        return _buildInitialState();
-    }
-  }
-
-  Widget _buildInitialState() {
-    bool canGenerate = _textController.text.isNotEmpty || _selectedLibraryItem != null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Generate Quiz',
-          style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Input text or select content from your Library',
-          style: GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: _textController,
-          maxLines: 10,
-          decoration: InputDecoration(
-            hintText: 'Paste text here to generate quiz...',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          onChanged: (text) => setState(() {}),
-        ),
-        const SizedBox(height: 24),
-        Center(
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.library_books),
-            label: const Text('Select from Library'),
-            onPressed: _selectFromLibrary,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            ),
-          ),
-        ),
-        if (_selectedLibraryItem != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 16.0),
-            child: Center(
-              child: Chip(
-                label: Text(_selectedLibraryItem!),
-                onDeleted: () {
-                  setState(() {
-                    _selectedLibraryItem = null;
-                  });
-                },
-              ),
-            ),
-          ),
-        const SizedBox(height: 24),
-        Center(
-          child: ElevatedButton(
-            onPressed: canGenerate ? _generateQuiz : null,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 20),
-            ),
-            child: const Text('Generate Quiz'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 64),
-          const SizedBox(height: 16),
-          Text(
-            'Failed to generate quiz',
-            style: GoogleFonts.oswald(fontSize: 22, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _errorMessage,
-            style: GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _retry,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuccessState() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Your Quiz',
-          style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _questions.length,
-          itemBuilder: (context, index) {
-            final question = _questions[index];
-            return Card(
-              elevation: 4,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_questions.isNotEmpty)
+              Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Question ${index + 1}: ${question.question}',
-                      style: GoogleFonts.roboto(fontSize: 18, fontWeight: FontWeight.w500),
+                      'Question ${_currentQuestionIndex + 1}/${_questions.length}',
+                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    const SizedBox(height: 12),
-                    ...List<Widget>.from(question.options.map<Widget>((option) {
-                      return RadioListTile<String>(
-                        title: Text(option),
-                        value: option,
-                        groupValue: question.selectedAnswer,
-                        onChanged: (value) {
-                          setState(() {
-                            question.selectedAnswer = value;
-                          });
-                        },
+                    const SizedBox(height: 20),
+                    Text(_questions[_currentQuestionIndex].question, style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 20),
+                    ...List.generate(_questions[_currentQuestionIndex].options.length, (index) {
+                      final isCorrect = index == _questions[_currentQuestionIndex].correctAnswerIndex;
+                      final isSelected = index == _selectedAnswerIndex;
+
+                      Color? tileColor;
+                      if (isSelected) {
+                        tileColor = isCorrect ? Colors.green.withOpacity(0.5) : Colors.red.withOpacity(0.5);
+                      } else if (_selectedAnswerIndex != null && isCorrect) {
+                        tileColor = Colors.green.withOpacity(0.5);
+                      }
+
+                      return ListTile(
+                        title: Text(_questions[_currentQuestionIndex].options[index]),
+                        tileColor: tileColor,
+                        onTap: _selectedAnswerIndex == null ? () => _handleAnswer(index) : null,
                       );
-                    })),
+                    }),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: _saveQuiz,
+                      icon: const Icon(Icons.save),
+                      label: const Text('Save Quiz'),
+                    ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save_alt),
-              label: const Text('Save'),
-              onPressed: _saveToLibrary,
-            ),
           ],
         ),
-        const SizedBox(height: 16),
-        Center(
-          child: TextButton(
-            onPressed: _retry,
-            child: const Text('Generate Another Quiz'),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

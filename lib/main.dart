@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
+import 'services/upgrade_service.dart';
 import 'views/screens/auth_screen.dart';
 import 'views/screens/main_screen.dart';
 import 'models/user_model.dart';
@@ -30,6 +31,10 @@ class MyApp extends StatelessWidget {
       providers: [
         Provider<AuthService>(
           create: (_) => AuthService(FirebaseAuth.instance),
+        ),
+        Provider<UpgradeService>(
+          create: (_) => UpgradeService(),
+          dispose: (_, service) => service.dispose(),
         ),
         StreamProvider<User?>(
           create: (context) => context.read<AuthService>().authStateChanges,
@@ -62,8 +67,22 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final firebaseUser = context.watch<User?>();
+    if (firebaseUser != null) {
+      context.read<UpgradeService>().listenToPurchaseUpdates(context);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

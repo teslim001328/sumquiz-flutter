@@ -11,6 +11,7 @@ import '../../services/firestore_service.dart';
 import '../screens/summary_screen.dart';
 import '../screens/quiz_screen.dart';
 import '../screens/flashcards_screen.dart';
+import '../widgets/upgrade_modal.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -44,23 +45,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   void _showUpgradeDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Upgrade to Pro'),
-        content: const Text('You have reached your daily limit. Upgrade to Pro for unlimited access.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Implement navigation to upgrade screen
-              Navigator.of(context).pop();
-            },
-            child: const Text('Upgrade'),
-          ),
-        ],
-      ),
+      builder: (context) => const UpgradeModal(),
     );
   }
 
@@ -144,7 +129,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
             _navigateToCreationScreen(_tabController.index, userModel);
           }
         },
-        label: Text('Create New'),
+        label: const Text('Create New'),
         icon: const Icon(Icons.add),
       ),
     );

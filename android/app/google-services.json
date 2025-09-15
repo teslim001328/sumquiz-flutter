@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "370380317647",
+    "project_id": "sumquiz-f56f3",
+    "storage_bucket": "sumquiz-f56f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370380317647:android:0d5c6aa1e3be9e56d828ba",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "370380317647-uq1v0o5mn825cim166cecicil7e1o3e2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjFvU2akvhB5JjbhoMAE6SxWtjgmWBft4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "370380317647-uq1v0o5mn825cim166cecicil7e1o3e2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
