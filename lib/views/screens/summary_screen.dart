@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_ai/firebase_ai.dart';
 
 import '../../models/user_model.dart';
 import '../../services/ai_service.dart';
@@ -33,7 +32,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   @override
   void initState() {
     super.initState();
-    _aiService = AIService(FirebaseVertexAI.instance);
+    _aiService = AIService();
     _firestoreService = FirestoreService();
   }
 
