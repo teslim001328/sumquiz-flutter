@@ -105,7 +105,6 @@ class _EmailFormState extends State<_EmailForm> {
   bool _isLogin = true; // Determines if the form is for login or signup
   String _email = '';
   String _password = '';
-  String _name = '';
   bool _isLoading = false;
 
   void _trySubmit() async {
@@ -122,9 +121,9 @@ class _EmailFormState extends State<_EmailForm> {
 
       try {
         if (_isLogin) {
-          await authService.signInWithEmail(_email, _password);
+          await authService.signInWithEmailAndPassword(_email, _password);
         } else {
-          await authService.signUpWithEmail(_email, _password, _name);
+          await authService.createUserWithEmailAndPassword(_email, _password);
         }
       } catch (e) {
         if (!mounted) return;
@@ -147,18 +146,6 @@ class _EmailFormState extends State<_EmailForm> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // Name field (only for signup)
-          if (!_isLogin)
-            TextFormField(
-              key: const ValueKey('name'),
-              validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
-              onSaved: (value) => _name = value!,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          const SizedBox(height: 12),
           // Email field
           TextFormField(
             key: const ValueKey('email'),

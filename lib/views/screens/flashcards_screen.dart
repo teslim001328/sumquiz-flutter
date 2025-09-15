@@ -8,14 +8,8 @@ import 'package:flip_card/flip_card.dart';
 
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
-import 'upgrade_screen.dart';
-
-class Flashcard {
-  final String question;
-  final String answer;
-
-  Flashcard({required this.question, required this.answer});
-}
+import '../widgets/upgrade_modal.dart';
+import '../../models/flashcard_model.dart';
 
 class FlashcardsScreen extends StatefulWidget {
   const FlashcardsScreen({super.key});
@@ -53,7 +47,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
 
     try {
       final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
-      final prompt = 'Create a list of flashcards from the following text. Return a JSON list of objects, where each object has a "question" and "answer" field. Text: ${_textController.text}';
+      final prompt =
+          'Create flashcards from the following text. Return a JSON list of objects, where each object has a "question" and an "answer". Text: ${_textController.text}';
       final response = await model.generateContent([Content.text(prompt)]);
 
       if (response.text != null) {
@@ -61,7 +56,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         if (jsonResponse is List) {
           setState(() {
             _flashcards = jsonResponse
-                .map((item) => Flashcard(question: item['question'], answer: item['answer']))
+                .map((item) => Flashcard.fromJson(item))
                 .toList();
           });
         }
@@ -96,7 +91,10 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+              showModalBottomSheet(
+                context: context,
+                builder: (context) => const UpgradeModal(),
+              );
             },
             child: const Text('Upgrade'),
           ),

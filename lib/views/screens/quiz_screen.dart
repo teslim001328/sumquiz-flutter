@@ -6,15 +6,9 @@ import 'package:firebase_ai/firebase_ai.dart';
 
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
-import 'upgrade_screen.dart';
-
-class Question {
-  final String question;
-  final List<String> options;
-  final int correctAnswerIndex;
-
-  Question({required this.question, required this.options, required this.correctAnswerIndex});
-}
+import '../upgrade_screen.dart';
+import '../../models/quiz_question.dart';
+import '../../services/ai_service.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -28,11 +22,18 @@ class _QuizScreenState extends State<QuizScreen> {
   final TextEditingController _titleController = TextEditingController();
   final FirestoreService _firestore = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  late final AIService _aiService;
   bool _isLoading = false;
-  List<Question> _questions = [];
+  List<QuizQuestion> _questions = [];
   int _currentQuestionIndex = 0;
   int? _selectedAnswerIndex;
   int _score = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _aiService = AIService(FirebaseAI());
+  }
 
   Future<void> _generateQuiz() async {
     final userModel = Provider.of<UserModel?>(context, listen: false);
@@ -57,25 +58,10 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
-      final prompt =
-          'Create a multiple choice quiz from the following text. Return a JSON list of objects, where each object has a "question", an "options" list, and a "correctAnswerIndex". Text: ${_textController.text}';
-      final response = await model.generateContent([Content.text(prompt)]);
-
-      if (response.text != null) {
-        final jsonResponse = jsonDecode(response.text!);
-        if (jsonResponse is List) {
-          setState(() {
-            _questions = jsonResponse
-                .map((item) => Question(
-                      question: item['question'],
-                      options: List<String>.from(item['options']),
-                      correctAnswerIndex: item['correctAnswerIndex'],
-                    ))
-                .toList();
-          });
-        }
-      }
+      final questions = await _aiService.generateQuiz(_textController.text);
+      setState(() {
+        _questions = questions;
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +116,7 @@ class _QuizScreenState extends State<QuizScreen> {
         _questions.map((q) => {
           'question': q.question,
           'options': q.options,
-          'correctAnswerIndex': q.correctAnswerIndex,
+          'correctAnswer': q.correctAnswer,
         }).toList(),
       );
       if (!mounted) return;
@@ -148,7 +134,7 @@ class _QuizScreenState extends State<QuizScreen> {
   void _handleAnswer(int selectedIndex) {
     setState(() {
       _selectedAnswerIndex = selectedIndex;
-      if (selectedIndex == _questions[_currentQuestionIndex].correctAnswerIndex) {
+      if (_questions[_currentQuestionIndex].options[selectedIndex] == _questions[_currentQuestionIndex].correctAnswer) {
         _score++;
       }
     });
@@ -213,7 +199,6 @@ class _QuizScreenState extends State<QuizScreen> {
                           // TODO: Implement paste from clipboard
                         },
                       ),
-                    ),
                     maxLines: 5,
                   ),
                   const SizedBox(height: 16),
@@ -246,7 +231,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     Text(_questions[_currentQuestionIndex].question, style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 20),
                     ...List.generate(_questions[_currentQuestionIndex].options.length, (index) {
-                      final isCorrect = index == _questions[_currentQuestionIndex].correctAnswerIndex;
+                      final isCorrect = _questions[_currentQuestionIndex].options[index] == _questions[_currentQuestionIndex].correctAnswer;
                       final isSelected = index == _selectedAnswerIndex;
 
                       Color? tileColor;

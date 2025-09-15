@@ -91,7 +91,9 @@ class FirestoreService {
   // Library methods
 
   Future<DocumentReference> addSummary(String userId, Map<String, dynamic> data) {
-    return _db.collection('users').doc(userId).collection('summaries').add(.data);
+    final summaryData = <String, dynamic>{};
+    summaryData.addAll(data);
+    return _db.collection('users').doc(userId).collection('summaries').add(summaryData);
   }
 
   Stream<List<LibraryItem>> streamSummaries(String userId) {
