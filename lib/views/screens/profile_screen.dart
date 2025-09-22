@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
-import 'upgrade_screen.dart';
+import '../widgets/upgrade_modal.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -51,7 +51,10 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 10),
                         ElevatedButton(
                           onPressed: () {
-                            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) => const UpgradeModal(),
+                            );
                           },
                           child: const Text('Upgrade Now'),
                         ),

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import '../services/upgrade_service.dart';
+import '../../services/upgrade_service.dart';
 
 class UpgradeModal extends StatefulWidget {
   const UpgradeModal({super.key});
 
   @override
-  _UpgradeModalState createState() => _UpgradeModalState();
+  UpgradeModalState createState() => UpgradeModalState();
 }
 
-class _UpgradeModalState extends State<UpgradeModal> {
+class UpgradeModalState extends State<UpgradeModal> {
   bool _isLoading = false;
   List<ProductDetails> _products = [];
 

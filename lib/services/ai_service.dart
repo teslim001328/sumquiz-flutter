@@ -8,12 +8,8 @@ import '../models/quiz_question.dart';
 import '../models/flashcard_model.dart';
 
 class AIService {
-  final FirebaseAI _firebaseAI;
-
-  AIService(this._firebaseAI);
-
   Future<String> generateSummary(String text, {File? pdfFile}) async {
-    final model = _firebaseAI.generativeModel(model: 'gemini-1.5-flash');
+    final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
     String fullText = text;
 
     if (pdfFile != null) {
@@ -43,7 +39,7 @@ class AIService {
   }
 
   Future<List<QuizQuestion>> generateQuiz(String text) async {
-    final model = _firebaseAI.generativeModel(model: 'gemini-1.5-flash');
+    final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
     final prompt =
         'Create a multiple-choice quiz from the following text. Return a JSON array of questions, where each object has a "question" string, an "options" array of strings, and a "correct_option" string. Text: $text';
 
@@ -68,9 +64,9 @@ class AIService {
   }
 
   Future<List<Flashcard>> generateFlashcards(String text) async {
-    final model = _firebaseAI.generativeModel(model: 'gemini-1.5-flash');
+    final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
     final prompt =
-        'Create a set of flashcards from the following text. Return a JSON array of flashcards, where each object has a "front" string and a "back" string. Text: $text';
+        'Create a set of flashcards from the following text. Return a JSON array of flashcards, where each object has a "front" string, and a "back" string. Text: $text';
 
     try {
       final response = await model.generateContent([Content.text(prompt)]);

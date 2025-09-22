@@ -1,14 +1,15 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
-import '../upgrade_screen.dart';
+import '../widgets/upgrade_modal.dart';
 import '../../models/quiz_question.dart';
-import '../../services/ai_service.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -22,22 +23,16 @@ class _QuizScreenState extends State<QuizScreen> {
   final TextEditingController _titleController = TextEditingController();
   final FirestoreService _firestore = FirestoreService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late final AIService _aiService;
   bool _isLoading = false;
   List<QuizQuestion> _questions = [];
   int _currentQuestionIndex = 0;
   int? _selectedAnswerIndex;
   int _score = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _aiService = AIService(FirebaseAI());
-  }
-
   Future<void> _generateQuiz() async {
     final userModel = Provider.of<UserModel?>(context, listen: false);
     if (userModel == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User data not available.')),
       );
@@ -45,7 +40,9 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     if (!_firestore.canGenerate('quizzes', userModel)) {
-      _showUpgradeDialog();
+      if (mounted) {
+        _showUpgradeDialog();
+      }
       return;
     }
 
@@ -58,11 +55,28 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
-      final questions = await _aiService.generateQuiz(_textController.text);
-      setState(() {
-        _questions = questions;
-      });
-    } catch (e) {
+      final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+      final prompt =
+          'Create a quiz from the following text. Return a JSON list of objects, where each object has a "question", a list of "options", and a "correctAnswer". Text: ${_textController.text}';
+      final response = await model.generateContent([Content.text(prompt)]);
+
+      if (response.text != null) {
+        final jsonResponse = jsonDecode(response.text!);
+        if (jsonResponse is List) {
+          setState(() {
+            _questions = jsonResponse
+                .map((item) => QuizQuestion.fromJson(item))
+                .toList();
+          });
+        }
+      }
+    } catch (e, s) {
+      developer.log(
+        'Error generating quiz',
+        name: 'my_app.quiz',
+        error: e,
+        stackTrace: s,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error generating quiz: $e')),
@@ -92,7 +106,12 @@ class _QuizScreenState extends State<QuizScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => const UpgradeModal(),
+                );
+              }
             },
             child: const Text('Upgrade'),
           ),
@@ -103,6 +122,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   Future<void> _saveQuiz() async {
     if (_questions.isEmpty || _titleController.text.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a title and generate a quiz before saving.')),
       );
@@ -123,7 +143,13 @@ class _QuizScreenState extends State<QuizScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Quiz saved successfully!')),
       );
-    } catch (e) {
+    } catch (e, s) {
+      developer.log(
+        'Error saving quiz',
+        name: 'my_app.quiz',
+        error: e,
+        stackTrace: s,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving quiz: $e')),
@@ -140,15 +166,17 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        _selectedAnswerIndex = null;
-        if (_currentQuestionIndex < _questions.length - 1) {
-          _currentQuestionIndex++;
-        } else {
-          // End of the quiz
-          _showResultDialog();
-        }
-      });
+      if (mounted) {
+        setState(() {
+          _selectedAnswerIndex = null;
+          if (_currentQuestionIndex < _questions.length - 1) {
+            _currentQuestionIndex++;
+          } else {
+            // End of the quiz
+            _showResultDialog();
+          }
+        });
+      }
     });
   }
 
@@ -162,11 +190,13 @@ class _QuizScreenState extends State<QuizScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              setState(() {
-                _questions = [];
-                _currentQuestionIndex = 0;
-                _score = 0;
-              });
+              if (mounted) {
+                setState(() {
+                  _questions = [];
+                  _currentQuestionIndex = 0;
+                  _score = 0;
+                });
+              }
             },
             child: const Text('Done'),
           ),
@@ -195,10 +225,14 @@ class _QuizScreenState extends State<QuizScreen> {
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.paste),
-                        onPressed: () {
-                          // TODO: Implement paste from clipboard
+                        onPressed: () async {
+                          final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+                          if (clipboardData != null) {
+                            _textController.text = clipboardData.text!;
+                          }
                         },
                       ),
+                    ),
                     maxLines: 5,
                   ),
                   const SizedBox(height: 16),
@@ -236,9 +270,9 @@ class _QuizScreenState extends State<QuizScreen> {
 
                       Color? tileColor;
                       if (isSelected) {
-                        tileColor = isCorrect ? Colors.green.withOpacity(0.5) : Colors.red.withOpacity(0.5);
+                        tileColor = isCorrect ? Colors.green.withAlpha(128) : Colors.red.withAlpha(128);
                       } else if (_selectedAnswerIndex != null && isCorrect) {
-                        tileColor = Colors.green.withOpacity(0.5);
+                        tileColor = Colors.green.withAlpha(128);
                       }
 
                       return ListTile(

@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flip_card/flip_card.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
@@ -29,6 +31,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
   Future<void> _generateFlashcards() async {
     final userModel = Provider.of<UserModel?>(context, listen: false);
     if (userModel == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User data not available.')),
       );
@@ -36,7 +39,9 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     }
 
     if (!_firestore.canGenerate('flashcards', userModel)) {
-      _showUpgradeDialog();
+      if (mounted) {
+        _showUpgradeDialog();
+      }
       return;
     }
 
@@ -46,7 +51,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     });
 
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
+      final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
       final prompt =
           'Create flashcards from the following text. Return a JSON list of objects, where each object has a "question" and an "answer". Text: ${_textController.text}';
       final response = await model.generateContent([Content.text(prompt)]);
@@ -61,7 +66,13 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           });
         }
       }
-    } catch (e) {
+    } catch (e, s) {
+      developer.log(
+        'Error generating flashcards',
+        name: 'my_app.flashcards',
+        error: e,
+        stackTrace: s,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error generating flashcards: $e')),
@@ -91,10 +102,12 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
-              showModalBottomSheet(
-                context: context,
-                builder: (context) => const UpgradeModal(),
-              );
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => const UpgradeModal(),
+                );
+              }
             },
             child: const Text('Upgrade'),
           ),
@@ -105,6 +118,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
 
   Future<void> _saveFlashcards() async {
     if (_flashcards.isEmpty || _titleController.text.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a title and generate flashcards before saving.')),
       );
@@ -121,7 +135,13 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Flashcards saved successfully!')),
       );
-    } catch (e) {
+    } catch (e, s) {
+      developer.log(
+        'Error saving flashcards',
+        name: 'my_app.flashcards',
+        error: e,
+        stackTrace: s,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving flashcards: $e')),
@@ -146,8 +166,11 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.paste),
-                  onPressed: () {
-                    // TODO: Implement paste from clipboard
+                  onPressed: () async {
+                    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (clipboardData != null) {
+                      _textController.text = clipboardData.text!;
+                    }
                   },
                 ),
               ),

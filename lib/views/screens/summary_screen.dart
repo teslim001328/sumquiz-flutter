@@ -1,13 +1,18 @@
 import 'dart:io';
+import 'dart:developer' as developer;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_ai/firebase_ai.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import '../../models/user_model.dart';
-import '../../services/ai_service.dart';
 import '../../services/firestore_service.dart';
+import '../widgets/upgrade_modal.dart';
 
 enum SummaryState { initial, loading, error, success }
 
@@ -15,24 +20,21 @@ class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
 
   @override
-  _SummaryScreenState createState() => _SummaryScreenState();
+  SummaryScreenState createState() => SummaryScreenState();
 }
 
-class _SummaryScreenState extends State<SummaryScreen> {
+class SummaryScreenState extends State<SummaryScreen> {
   final TextEditingController _textController = TextEditingController();
   String? _pdfFileName;
-  File? _pdfFile;
   SummaryState _state = SummaryState.initial;
   String _summary = '';
   String _errorMessage = '';
 
-  late final AIService _aiService;
   late final FirestoreService _firestoreService;
 
   @override
   void initState() {
     super.initState();
-    _aiService = AIService();
     _firestoreService = FirestoreService();
   }
 
@@ -44,26 +46,42 @@ class _SummaryScreenState extends State<SummaryScreen> {
       );
 
       if (result != null) {
+        final file = File(result.files.single.path!);
+        final document = PdfDocument(inputBytes: file.readAsBytesSync());
+        final text = PdfTextExtractor(document).extractText();
+        document.dispose();
+
         setState(() {
-          _pdfFile = File(result.files.single.path!);
           _pdfFileName = result.files.single.name;
-          _textController.clear();
+          _textController.text = text;
         });
       }
-    } catch (e) {
+    } catch (e, s) {
+      developer.log(
+        'Error picking or reading PDF',
+        name: 'my_app.summary',
+        error: e,
+        stackTrace: s,
+      );
       setState(() {
         _state = SummaryState.error;
-        _errorMessage = "Error picking PDF: $e";
+        _errorMessage = "Error picking or reading PDF: $e";
       });
     }
   }
 
   void _generateSummary() async {
-    final user = Provider.of<UserModel?>(context, listen: false);
-    final userModel = await _firestoreService.streamUser(user!.uid).first;
+    final userModel = Provider.of<UserModel?>(context, listen: false);
+    if (userModel == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not available. Please log in again.')),
+      );
+      return;
+    }
 
     if (!_firestoreService.canGenerate('summaries', userModel)) {
-      _showUpgradeDialog();
+      if (mounted) _showUpgradeDialog();
       return;
     }
 
@@ -72,24 +90,31 @@ class _SummaryScreenState extends State<SummaryScreen> {
     });
 
     try {
-      String summary = await _aiService.generateSummary(
-        _textController.text,
-        pdfFile: _pdfFile,
-      );
+      final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+      final prompt =
+          'Summarize the following text: ${_textController.text}';
+      final response = await model.generateContent([Content.text(prompt)]);
+      final summary = response.text ?? '';
 
-      if (summary.startsWith("Error:")) {
+      if (summary.isEmpty) {
         setState(() {
           _state = SummaryState.error;
-          _errorMessage = summary;
+          _errorMessage = 'Could not generate a summary. Please try again.';
         });
       } else {
-        await _firestoreService.incrementUsage('summaries', user.uid);
+        await _firestoreService.incrementUsage('summaries', userModel.uid);
         setState(() {
           _summary = summary;
           _state = SummaryState.success;
         });
       }
-    } catch (e) {
+    } catch (e, s) {
+      developer.log(
+        'An unexpected error occurred during summary generation',
+        name: 'my_app.summary',
+        error: e,
+        stackTrace: s,
+      );
       setState(() {
         _state = SummaryState.error;
         _errorMessage = "An unexpected error occurred. Please try again.";
@@ -110,8 +135,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // TODO: Implement navigation to upgrade screen
               Navigator.of(context).pop();
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (context) => const UpgradeModal(),
+                );
+              }
             },
             child: const Text('Upgrade'),
           ),
@@ -129,7 +159,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
   }
 
   void _copySummary() {
-    // TODO: Implement copy to clipboard
+    Clipboard.setData(ClipboardData(text: _summary));
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Summary copied to clipboard!')),
     );
@@ -139,11 +170,23 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final user = Provider.of<User?>(context, listen: false);
     if (user != null) {
       try {
-        await _firestoreService.saveSummary(user.uid, _summary, _pdfFileName ?? "Pasted Text Summary");
+        await _firestoreService.addSummary(user.uid, {
+          'title': _pdfFileName ?? "Pasted Text Summary",
+          'summary': _summary,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Summary saved to library!')),
         );
-      } catch (e) {
+      } catch (e, s) {
+        developer.log(
+          'Error saving summary',
+          name: 'my_app.summary',
+          error: e,
+          stackTrace: s,
+        );
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error saving summary.')),
         );
@@ -165,7 +208,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
           if (_state == SummaryState.loading)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withAlpha(128),
               child: const Center(
                 child: CircularProgressIndicator(),
               ),
@@ -233,7 +276,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 onDeleted: () {
                   setState(() {
                     _pdfFileName = null;
-                    _pdfFile = null;
+                    _textController.clear();
                   });
                 },
               ),

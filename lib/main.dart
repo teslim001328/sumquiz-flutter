@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +33,9 @@ class MyApp extends StatelessWidget {
         Provider<AuthService>(
           create: (_) => AuthService(FirebaseAuth.instance),
         ),
+        Provider<FirestoreService>(
+          create: (_) => FirestoreService(),
+        ),
         Provider<UpgradeService>(
           create: (_) => UpgradeService(),
           dispose: (_, service) => service.dispose(),
@@ -40,16 +44,16 @@ class MyApp extends StatelessWidget {
           create: (context) => context.read<AuthService>().authStateChanges,
           initialData: null,
         ),
-        ChangeNotifierProvider<ThemeProvider>(
-          create: (_) => ThemeProvider(),
-        ),
         ProxyProvider<User?, Stream<UserModel?>>(
           update: (context, user, previous) {
             if (user != null) {
-              return FirestoreService().streamUser(user.uid);
+              return context.read<FirestoreService>().streamUser(user.uid);
             }
             return Stream.value(null);
           },
+        ),
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider(),
         ),
       ],
       child: Consumer<ThemeProvider>(
@@ -60,6 +64,7 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
             home: const AuthWrapper(),
+            debugShowCheckedModeBanner: false,
           );
         },
       ),
@@ -67,22 +72,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatefulWidget {
+class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
-
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final firebaseUser = context.watch<User?>();
-    if (firebaseUser != null) {
-      context.read<UpgradeService>().listenToPurchaseUpdates(context);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

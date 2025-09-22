@@ -17,10 +17,10 @@ class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  _LibraryScreenState createState() => _LibraryScreenState();
+  LibraryScreenState createState() => LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderStateMixin {
+class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FirestoreService _firestoreService = FirestoreService();
   bool _isOffline = false;
@@ -31,7 +31,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
     _tabController = TabController(length: 3, vsync: this);
     Connectivity().onConnectivityChanged.listen((result) {
       setState(() {
-        _isOffline = result == ConnectivityResult.none;
+        _isOffline = !result.contains(ConnectivityResult.none);
       });
     });
   }

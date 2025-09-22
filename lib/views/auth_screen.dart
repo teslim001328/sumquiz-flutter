@@ -1,4 +1,4 @@
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:myapp/services/auth_service.dart';
@@ -74,8 +74,13 @@ class _GoogleSignInButton extends StatelessWidget {
       icon: const Icon(Icons.g_mobiledata, size: 28), // Placeholder for Google Icon
       label: const Text('Sign in with Google'),
       onPressed: () async {
-        final user = await authService.signInWithGoogle();
-        if (user == null) {
+        try {
+          await authService.signInWithGoogle();
+        } on FirebaseAuthException catch (e) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(content: Text(e.message ?? 'An unknown error occurred.')),
+          );
+        } catch (e) {
           scaffoldMessenger.showSnackBar(
             const SnackBar(content: Text('Google Sign-In Failed. Please try again.')),
           );
@@ -113,10 +118,10 @@ class _EmailFormState extends State<_EmailForm> {
 
     if (isValid) {
       _formKey.currentState?.save();
-      
+
       final authService = Provider.of<AuthService>(context, listen: false);
       final scaffoldMessenger = ScaffoldMessenger.of(context);
-      
+
       setState(() => _isLoading = true);
 
       try {
@@ -125,10 +130,23 @@ class _EmailFormState extends State<_EmailForm> {
         } else {
           await authService.createUserWithEmailAndPassword(_email, _password);
         }
+      } on FirebaseAuthException catch (e) {
+        if (!mounted) return;
+        String message = 'An error occurred, please check your credentials!';
+        if (e.code == 'email-already-in-use') {
+          message = 'The account already exists for that email.';
+        } else if (e.code == 'user-not-found') {
+          message = 'No user found for that email.';
+        } else if (e.code == 'wrong-password') {
+          message = 'Wrong password provided for that user.';
+        }
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text(message)),
+        );
       } catch (e) {
         if (!mounted) return;
         scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Authentication Failed: ${e.toString()}')),
+          const SnackBar(content: Text('An unknown error occurred.')),
         );
       } finally {
         if (mounted) {
@@ -182,9 +200,7 @@ class _EmailFormState extends State<_EmailForm> {
           // Toggle between login and signup
           TextButton(
             onPressed: () => setState(() => _isLogin = !_isLogin),
-            child: Text(_isLogin
-                ? 'Create a new account'
-                : 'I already have an account'),
+            child: Text(_isLogin ? 'Create a new account' : 'I already have an account'),
           ),
         ],
       ),

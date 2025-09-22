@@ -66,4 +66,5 @@ class DefaultFirebaseOptions {
     projectId: 'sumquiz-f56f3',
     storageBucket: 'sumquiz-f56f3.firebasestorage.app',
   );
+
 }

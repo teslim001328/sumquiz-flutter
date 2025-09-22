@@ -8,10 +8,10 @@ class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
 
   @override
-  _SubscriptionScreenState createState() => _SubscriptionScreenState();
+  SubscriptionScreenState createState() => SubscriptionScreenState();
 }
 
-class _SubscriptionScreenState extends State<SubscriptionScreen> {
+class SubscriptionScreenState extends State<SubscriptionScreen> {
   final SubscriptionService _subscriptionService = SubscriptionService();
   List<ProductDetails> _products = [];
   bool _isLoading = true;
@@ -71,7 +71,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
-                    _subscriptionService.purchaseProduct(product);
+                    _subscriptionService.purchaseSubscription(product);
                   },
                   child: const Text('Subscribe'),
                 ),

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
-class UpgradeService {
-  static const String _proPlanId = 'pro_plan'; // Replace with your actual product ID
+class SubscriptionService {
+  static const String _subscriptionId = 'pro_subscription'; // Example subscription ID
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   late StreamSubscription<List<PurchaseDetails>> _subscription;
@@ -13,7 +13,7 @@ class UpgradeService {
   Stream<List<PurchaseDetails>> get purchaseStream =>
       _purchaseUpdatedController.stream;
 
-  void listenToPurchaseUpdates(BuildContext context) {
+  void listenToPurchases(BuildContext context) {
     final Stream<List<PurchaseDetails>> purchaseUpdated =
         _inAppPurchase.purchaseStream;
     _subscription = purchaseUpdated.listen((purchaseDetailsList) {
@@ -33,18 +33,16 @@ class UpgradeService {
     if (!available) {
       return [];
     }
-    const Set<String> ids = <String>{_proPlanId};
+    const Set<String> ids = <String>{_subscriptionId};
     final ProductDetailsResponse response =
         await _inAppPurchase.queryProductDetails(ids);
-
     if (response.notFoundIDs.isNotEmpty) {
       // Handle notFoundIDs
     }
     return response.productDetails;
   }
 
-  Future<void> purchaseProPlan(
-      ProductDetails productDetails, BuildContext context) async {
+  Future<void> purchaseSubscription(ProductDetails productDetails) async {
     final PurchaseParam purchaseParam = PurchaseParam(productDetails: productDetails);
     await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
   }

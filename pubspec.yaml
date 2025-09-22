@@ -10,26 +10,26 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
-  firebase_core: ^3.1.1
-  firebase_auth: ^5.1.1
-  cloud_firestore: ^5.0.2
-  google_sign_in: ^6.2.1
+  firebase_core: 
+  firebase_auth: 
+  cloud_firestore: 
+  google_sign_in: ^7.2.0 
   provider: ^6.1.2
   google_fonts: ^6.2.1
   file_picker: ^10.3.2
-  firebase_ai: ^2.3.0
-  syncfusion_flutter_pdf: ^31.1.18
+  firebase_ai: ^3.2.0
+  syncfusion_flutter_pdf: 
   flutter_card_swiper: ^7.0.2
   flip_card: ^0.7.0
-  fl_chart: ^1.1.0
-  connectivity_plus: ^7.0.0
-  in_app_purchase: ^3.2.3
-  intl: ^0.20.2
+  fl_chart: 
+  connectivity_plus: 
+  in_app_purchase: 
+  intl: 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

@@ -7,6 +7,7 @@ class UserModel {
   final String subscriptionStatus;
   final Map<String, dynamic> dailyUsage;
   final Timestamp lastReset;
+  final bool isPro;
 
   UserModel({
     required this.uid,
@@ -15,6 +16,7 @@ class UserModel {
     required this.subscriptionStatus,
     required this.dailyUsage,
     required this.lastReset,
+    this.isPro = false,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -27,6 +29,18 @@ class UserModel {
       dailyUsage: Map<String, dynamic>.from(data['daily_usage'] ?? {})
           .map((key, value) => MapEntry(key, value as int)),
       lastReset: data['last_reset'] ?? Timestamp.now(),
+      isPro: data['isPro'] ?? false,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'email': email,
+      'subscription_status': subscriptionStatus,
+      'daily_usage': dailyUsage,
+      'last_reset': lastReset,
+      'isPro': isPro,
+    };
   }
 }

@@ -10,4 +10,12 @@ class QuizQuestion {
     required this.correctAnswer,
     this.selectedAnswer,
   });
+
+  factory QuizQuestion.fromJson(Map<String, dynamic> json) {
+    return QuizQuestion(
+      question: json['question'],
+      options: List<String>.from(json['options']),
+      correctAnswer: json['correctAnswer'],
+    );
+  }
 }
