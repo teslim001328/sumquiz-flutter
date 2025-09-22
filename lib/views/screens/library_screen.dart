@@ -4,9 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:myapp/models/flashcard_model.dart';
-import 'package:myapp/models/quiz_model.dart';
-import 'package:myapp/models/summary_model.dart';
 
 import '../../models/library_item.dart';
 import '../../models/user_model.dart';
@@ -34,7 +31,7 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     _tabController = TabController(length: 3, vsync: this);
     Connectivity().onConnectivityChanged.listen((result) {
       setState(() {
-        _isOffline = result == ConnectivityResult.none;
+        _isOffline = result.contains(ConnectivityResult.none);
       });
     });
   }
@@ -53,7 +50,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
   }
 
   Future<void> _navigateToCreationScreen(int tabIndex, UserModel user) async {
-    bool canGenerate = await _firestoreService.canGenerate(user.uid, _getToolType(tabIndex));
+    final canGenerate = await _firestoreService.canGenerate(user.uid, _getToolType(tabIndex));
+    if (!mounted) return;
     if (!canGenerate) {
       _showUpgradeDialog();
       return;
@@ -197,7 +195,7 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
             .map((q) => LibraryItem(id: q.id, title: q.title, type: LibraryItemType.quiz, timestamp: q.timestamp))
             .toList());
       case 'flashcards':
-        return _firestoreService.streamFlashcards(userId).map((flashcards) => flashcards
+        return _firestoreService.streamFlashcardSets(userId).map((flashcards) => flashcards
             .map((f) => LibraryItem(id: f.id, title: f.title, type: LibraryItemType.flashcards, timestamp: f.timestamp))
             .toList());
       default:

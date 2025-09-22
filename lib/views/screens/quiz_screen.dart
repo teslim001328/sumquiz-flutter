@@ -1,14 +1,13 @@
-import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
 import '../../models/quiz_question.dart';
 import '../../models/quiz_model.dart';
@@ -24,6 +23,7 @@ class _QuizScreenState extends State<QuizScreen> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final FirestoreService _firestore = FirestoreService();
+  final AIService _aiService = AIService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
   List<QuizQuestion> _questions = [];
@@ -58,21 +58,10 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
-      final prompt =
-          'Create a quiz from the following text. Return a JSON list of objects, where each object has a "question", a list of "options", and a "correctAnswer". Text: ${_textController.text}';
-      final response = await model.generateContent([Content.text(prompt)]);
-
-      if (response.text != null) {
-        final jsonResponse = jsonDecode(response.text!);
-        if (jsonResponse is List) {
-          setState(() {
-            _questions = jsonResponse
-                .map((item) => QuizQuestion.fromJson(item))
-                .toList();
-          });
-        }
-      }
+      final questions = await _aiService.generateQuiz(_textController.text);
+      setState(() {
+        _questions = questions;
+      });
     } catch (e, s) {
       developer.log(
         'Error generating quiz',
@@ -133,13 +122,15 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     try {
-      await _firestore.saveQuiz(
-          _auth.currentUser!.uid,
-          Quiz(
-              id: '',
-              title: _titleController.text,
-              questions: _questions,
-              timestamp: Timestamp.now()));
+      await _firestore.addQuiz(
+        _auth.currentUser!.uid,
+        Quiz(
+          id: '',
+          title: _titleController.text,
+          questions: _questions,
+          timestamp: Timestamp.now(),
+        ),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Quiz saved successfully!')),

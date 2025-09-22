@@ -7,7 +7,7 @@ import 'firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirestoreService _firestoreService = FirestoreService();
 
   AuthService(this._auth);
@@ -59,21 +59,22 @@ class AuthService {
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
       final UserCredential result = await _auth.signInWithCredential(credential);
 
-      UserModel newUser = UserModel(
-        uid: result.user!.uid,
-        email: result.user!.email ?? '',
-        name: result.user!.displayName ?? '',
-        subscriptionStatus: 'Free',
-        dailyUsage: {},
-        lastReset: Timestamp.now(),
-      );
-      await _firestoreService.saveUserData(newUser);
+      if (result.additionalUserInfo?.isNewUser ?? false) {
+        UserModel newUser = UserModel(
+          uid: result.user!.uid,
+          email: result.user!.email ?? '',
+          name: result.user!.displayName ?? '',
+          subscriptionStatus: 'Free',
+          dailyUsage: {},
+          lastReset: Timestamp.now(),
+        );
+        await _firestoreService.saveUserData(newUser);
+      }
 
       return result.user;
     } catch (e, s) {

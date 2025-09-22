@@ -1,16 +1,15 @@
-import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flip_card/flip_card.dart';
 import 'package:flutter/services.dart';
 
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
 import '../../models/flashcard_model.dart';
 import '../../models/flashcard.dart';
@@ -26,6 +25,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final FirestoreService _firestore = FirestoreService();
+  final AIService _aiService = AIService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool _isLoading = false;
   List<Flashcard> _flashcards = [];
@@ -54,21 +54,10 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     });
 
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
-      final prompt =
-          'Create flashcards from the following text. Return a JSON list of objects, where each object has a "question" and an "answer". Text: ${_textController.text}';
-      final response = await model.generateContent([Content.text(prompt)]);
-
-      if (response.text != null) {
-        final jsonResponse = jsonDecode(response.text!);
-        if (jsonResponse is List) {
-          setState(() {
-            _flashcards = jsonResponse
-                .map((item) => Flashcard.fromJson(item))
-                .toList();
-          });
-        }
-      }
+      final flashcards = await _aiService.generateFlashcards(_textController.text);
+      setState(() {
+        _flashcards = flashcards;
+      });
     } catch (e, s) {
       developer.log(
         'Error generating flashcards',
@@ -129,7 +118,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     }
 
     try {
-      await _firestore.saveFlashcards(
+      await _firestore.addFlashcardSet(
         _auth.currentUser!.uid,
         FlashcardSet(
           id: '',

@@ -10,4 +10,11 @@ class Flashcard {
       answer: json['answer'] as String,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'question': question,
+      'answer': answer,
+    };
+  }
 }

@@ -41,7 +41,7 @@ class AIService {
   Future<List<QuizQuestion>> generateQuiz(String text) async {
     final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
     final prompt =
-        'Create a multiple-choice quiz from the following text. Return a JSON array of questions, where each object has a "question" string, an "options" array of strings, and a "correct_option" string. Text: $text';
+        'Create a multiple-choice quiz from the following text. Return a JSON array of questions, where each object has a "question" string, an "options" array of strings, and a "correctAnswer" string. Text: $text';
 
     try {
       final response = await model.generateContent([Content.text(prompt)]);
@@ -49,15 +49,11 @@ class AIService {
 
       if (jsonResponse is List) {
         return jsonResponse.map((data) {
-          return QuizQuestion(
-            question: data['question'],
-            options: List<String>.from(data['options']),
-            correctAnswer: data['correct_option'],
-          );
+          return QuizQuestion.fromJson(data);
         }).toList();
       }
-    } catch (e) {
-      developer.log("Error generating quiz: $e");
+    } catch (e, s) {
+      developer.log("Error generating quiz: $e", stackTrace: s);
     }
 
     return [];
@@ -66,7 +62,7 @@ class AIService {
   Future<List<Flashcard>> generateFlashcards(String text) async {
     final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
     final prompt =
-        'Create a set of flashcards from the following text. Return a JSON array of flashcards, where each object has a "front" string, and a "back" string. Text: $text';
+        'Create a set of flashcards from the following text. Return a JSON array of flashcards, where each object has a "question" string, and an "answer" string. Text: $text';
 
     try {
       final response = await model.generateContent([Content.text(prompt)]);
@@ -74,14 +70,11 @@ class AIService {
 
       if (jsonResponse is List) {
         return jsonResponse.map((data) {
-          return Flashcard(
-            question: data['front'],
-            answer: data['back'],
-          );
+          return Flashcard.fromJson(data);
         }).toList();
       }
-    } catch (e) {
-      developer.log("Error generating flashcards: $e");
+    } catch (e, s) {
+      developer.log("Error generating flashcards: $e", stackTrace: s);
     }
 
     return [];

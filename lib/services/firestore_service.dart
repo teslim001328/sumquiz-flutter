@@ -24,7 +24,8 @@ class FirestoreService {
     DocumentSnapshot<Map<String, dynamic>> doc = await _db.collection('users').doc(uid).get();
     if (doc.exists) {
       int dailyCount = doc.data()!['daily_usage'][feature] ?? 0;
-      return dailyCount < 10;
+      // Implement logic based on subscription status
+      return dailyCount < 10; // Placeholder for free tier
     }
     return false;
   }
@@ -63,22 +64,30 @@ class FirestoreService {
         .map((list) => list.docs.map((doc) => Quiz.fromFirestore(doc)).toList());
   }
 
-  Stream<List<FlashcardSet>> streamFlashcards(String uid) {
+  Future<void> addQuiz(String userId, Quiz quiz) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('quizzes')
+        .add(quiz.toJson());
+  }
+
+  Stream<List<FlashcardSet>> streamFlashcardSets(String uid) {
     return _db
         .collection('users')
         .doc(uid)
-        .collection('flashcards')
+        .collection('flashcard_sets')
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((list) =>
             list.docs.map((doc) => FlashcardSet.fromFirestore(doc)).toList());
   }
 
-  Future<void> saveFlashcards(String uid, FlashcardSet flashcardSet) {
+  Future<void> addFlashcardSet(String userId, FlashcardSet flashcardSet) {
     return _db
         .collection('users')
-        .doc(uid)
-        .collection('flashcards')
+        .doc(userId)
+        .collection('flashcard_sets')
         .add(flashcardSet.toJson());
   }
 }

@@ -7,12 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_ai/firebase_ai.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import '../../models/summary_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
 
 enum SummaryState { initial, loading, error, success }
@@ -27,16 +26,19 @@ class SummaryScreen extends StatefulWidget {
 class SummaryScreenState extends State<SummaryScreen> {
   final TextEditingController _textController = TextEditingController();
   String? _pdfFileName;
+  File? _pdfFile;
   SummaryState _state = SummaryState.initial;
   String _summary = '';
   String _errorMessage = '';
 
   late final FirestoreService _firestoreService;
+  late final AIService _aiService;
 
   @override
   void initState() {
     super.initState();
     _firestoreService = FirestoreService();
+    _aiService = AIService();
   }
 
   Future<void> _pickPdf() async {
@@ -47,14 +49,9 @@ class SummaryScreenState extends State<SummaryScreen> {
       );
 
       if (result != null) {
-        final file = File(result.files.single.path!);
-        final document = PdfDocument(inputBytes: file.readAsBytesSync());
-        final text = PdfTextExtractor(document).extractText();
-        document.dispose();
-
         setState(() {
+          _pdfFile = File(result.files.single.path!);
           _pdfFileName = result.files.single.name;
-          _textController.text = text;
         });
       }
     } catch (e, s) {
@@ -92,16 +89,15 @@ class SummaryScreenState extends State<SummaryScreen> {
     });
 
     try {
-      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
-      final prompt =
-          'Summarize the following text: ${_textController.text}';
-      final response = await model.generateContent([Content.text(prompt)]);
-      final summary = response.text ?? '';
+      final summary = await _aiService.generateSummary(
+        _textController.text,
+        pdfFile: _pdfFile,
+      );
 
-      if (summary.isEmpty) {
+      if (summary.startsWith("Error:")) {
         setState(() {
           _state = SummaryState.error;
-          _errorMessage = 'Could not generate a summary. Please try again.';
+          _errorMessage = summary;
         });
       } else {
         await _firestoreService.incrementUsage(userModel.uid, 'summaries');
@@ -280,6 +276,7 @@ class SummaryScreenState extends State<SummaryScreen> {
                 label: Text(_pdfFileName!),
                 onDeleted: () {
                   setState(() {
+                    _pdfFile = null;
                     _pdfFileName = null;
                     _textController.clear();
                   });
