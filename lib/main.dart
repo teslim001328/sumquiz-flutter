@@ -19,20 +19,29 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Create and initialize AuthService
+  final authService = AuthService(FirebaseAuth.instance);
+  // TODO: Replace with your actual client IDs if needed for web or server-side auth
+  await authService.initializeGoogleSignIn(
+    // clientId: 'YOUR_WEB_CLIENT_ID',
+    // serverClientId: 'YOUR_SERVER_CLIENT_ID',
+  );
+
   FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
-  runApp(const MyApp());
+  runApp(MyApp(authService: authService));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AuthService authService;
+
+  const MyApp({super.key, required this.authService});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<AuthService>(
-          create: (_) => AuthService(FirebaseAuth.instance),
-        ),
+        Provider<AuthService>.value(value: authService),
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),

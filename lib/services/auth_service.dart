@@ -1,3 +1,4 @@
+
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,14 +8,27 @@ import 'firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final FirestoreService _firestoreService = FirestoreService();
 
   AuthService(this._auth);
 
+  Future<void> initializeGoogleSignIn({String? clientId, String? serverClientId}) async {
+    try {
+      await _googleSignIn.initialize(
+        clientId: clientId,
+        serverClientId: serverClientId,
+      );
+    } catch (e, s) {
+      developer.log('Error initializing Google Sign In', error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<User?> createUserWithEmailAndPassword(String email, String password) async {
+    // ... (existing implementation)
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -37,6 +51,7 @@ class AuthService {
   }
 
   Future<User?> signInWithEmailAndPassword(String email, String password) async {
+    // ... (existing implementation)
     try {
       final result = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -52,6 +67,7 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
       if (googleUser == null) {
         return null; // User canceled
       }
@@ -59,6 +75,7 @@ class AuthService {
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
@@ -84,7 +101,16 @@ class AuthService {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e, s) {
+      developer.log('Error signing out', error: e, stackTrace: s);
+      rethrow;
+    }
   }
+
+  User? get currentUser => _auth.currentUser;
+
+  bool get isSignedIn => _auth.currentUser != null;
 }
