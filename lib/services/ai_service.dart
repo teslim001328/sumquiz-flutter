@@ -5,11 +5,11 @@ import 'dart:developer' as developer;
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../models/quiz_question.dart';
-import '../models/flashcard_model.dart';
+import '../models/flashcard.dart';
 
 class AIService {
   Future<String> generateSummary(String text, {File? pdfFile}) async {
-    final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+    final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
     String fullText = text;
 
     if (pdfFile != null) {
@@ -39,7 +39,7 @@ class AIService {
   }
 
   Future<List<QuizQuestion>> generateQuiz(String text) async {
-    final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+    final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
     final prompt =
         'Create a multiple-choice quiz from the following text. Return a JSON array of questions, where each object has a "question" string, an "options" array of strings, and a "correct_option" string. Text: $text';
 
@@ -64,7 +64,7 @@ class AIService {
   }
 
   Future<List<Flashcard>> generateFlashcards(String text) async {
-    final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+    final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
     final prompt =
         'Create a set of flashcards from the following text. Return a JSON array of flashcards, where each object has a "front" string, and a "back" string. Text: $text';
 

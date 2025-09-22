@@ -1,19 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class FlashcardSet {
+class Quiz {
   final String id;
   final String title;
-  final List<Map<String, String>> flashcards;
+  final List<Map<String, dynamic>> questions;
   final Timestamp timestamp;
 
-  FlashcardSet({required this.id, required this.title, required this.flashcards, required this.timestamp});
+  Quiz({required this.id, required this.title, required this.questions, required this.timestamp});
 
-  factory FlashcardSet.fromFirestore(DocumentSnapshot doc) {
+  factory Quiz.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
-    return FlashcardSet(
+    return Quiz(
       id: doc.id,
       title: data['title'] ?? '',
-      flashcards: List<Map<String, String>>.from(data['flashcards'] ?? []),
+      questions: List<Map<String, dynamic>>.from(data['questions'] ?? []),
       timestamp: data['timestamp'] ?? Timestamp.now(),
     );
   }
@@ -21,7 +21,7 @@ class FlashcardSet {
   Map<String, dynamic> toJson() {
     return {
       'title': title,
-      'flashcards': flashcards,
+      'questions': questions,
       'timestamp': timestamp,
     };
   }

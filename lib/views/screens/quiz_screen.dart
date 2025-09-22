@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../widgets/upgrade_modal.dart';
 import '../../models/quiz_question.dart';
+import '../../models/quiz_model.dart';
 
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
@@ -39,7 +41,8 @@ class _QuizScreenState extends State<QuizScreen> {
       return;
     }
 
-    if (!_firestore.canGenerate('quizzes', userModel)) {
+    final canGenerate = await _firestore.canGenerate(userModel.uid, 'quizzes');
+    if (!canGenerate) {
       if (mounted) {
         _showUpgradeDialog();
       }
@@ -55,7 +58,7 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
-      final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
       final prompt =
           'Create a quiz from the following text. Return a JSON list of objects, where each object has a "question", a list of "options", and a "correctAnswer". Text: ${_textController.text}';
       final response = await model.generateContent([Content.text(prompt)]);
@@ -87,7 +90,7 @@ class _QuizScreenState extends State<QuizScreen> {
         setState(() {
           _isLoading = false;
         });
-        await _firestore.incrementUsage('quizzes', _auth.currentUser!.uid);
+        await _firestore.incrementUsage(userModel.uid, 'quizzes');
       }
     }
   }
@@ -131,14 +134,12 @@ class _QuizScreenState extends State<QuizScreen> {
 
     try {
       await _firestore.saveQuiz(
-        _auth.currentUser!.uid,
-        _titleController.text,
-        _questions.map((q) => {
-          'question': q.question,
-          'options': q.options,
-          'correctAnswer': q.correctAnswer,
-        }).toList(),
-      );
+          _auth.currentUser!.uid,
+          Quiz(
+              id: '',
+              title: _titleController.text,
+              questions: _questions,
+              timestamp: Timestamp.now()));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Quiz saved successfully!')),
@@ -160,7 +161,8 @@ class _QuizScreenState extends State<QuizScreen> {
   void _handleAnswer(int selectedIndex) {
     setState(() {
       _selectedAnswerIndex = selectedIndex;
-      if (_questions[_currentQuestionIndex].options[selectedIndex] == _questions[_currentQuestionIndex].correctAnswer) {
+      if (_questions[_currentQuestionIndex].options[selectedIndex] ==
+          _questions[_currentQuestionIndex].correctAnswer) {
         _score++;
       }
     });
@@ -226,7 +228,8 @@ class _QuizScreenState extends State<QuizScreen> {
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.paste),
                         onPressed: () async {
-                          final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+                          final clipboardData =
+                              await Clipboard.getData(Clipboard.kTextPlain);
                           if (clipboardData != null) {
                             _textController.text = clipboardData.text!;
                           }
@@ -262,23 +265,33 @@ class _QuizScreenState extends State<QuizScreen> {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 20),
-                    Text(_questions[_currentQuestionIndex].question, style: Theme.of(context).textTheme.titleLarge),
+                    Text(_questions[_currentQuestionIndex].question,
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 20),
-                    ...List.generate(_questions[_currentQuestionIndex].options.length, (index) {
-                      final isCorrect = _questions[_currentQuestionIndex].options[index] == _questions[_currentQuestionIndex].correctAnswer;
+                    ...List.generate(
+                        _questions[_currentQuestionIndex].options.length,
+                        (index) {
+                      final isCorrect = _questions[_currentQuestionIndex]
+                              .options[index] ==
+                          _questions[_currentQuestionIndex].correctAnswer;
                       final isSelected = index == _selectedAnswerIndex;
 
                       Color? tileColor;
                       if (isSelected) {
-                        tileColor = isCorrect ? Colors.green.withAlpha(128) : Colors.red.withAlpha(128);
+                        tileColor = isCorrect
+                            ? Colors.green.withAlpha(128)
+                            : Colors.red.withAlpha(128);
                       } else if (_selectedAnswerIndex != null && isCorrect) {
                         tileColor = Colors.green.withAlpha(128);
                       }
 
                       return ListTile(
-                        title: Text(_questions[_currentQuestionIndex].options[index]),
+                        title: Text(
+                            _questions[_currentQuestionIndex].options[index]),
                         tileColor: tileColor,
-                        onTap: _selectedAnswerIndex == null ? () => _handleAnswer(index) : null,
+                        onTap: _selectedAnswerIndex == null
+                            ? () => _handleAnswer(index)
+                            : null,
                       );
                     }),
                     const Spacer(),

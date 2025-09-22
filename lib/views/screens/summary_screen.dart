@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
+import '../../models/summary_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../widgets/upgrade_modal.dart';
@@ -80,7 +81,8 @@ class SummaryScreenState extends State<SummaryScreen> {
       return;
     }
 
-    if (!_firestoreService.canGenerate('summaries', userModel)) {
+    final canGenerate = await _firestoreService.canGenerate(userModel.uid, 'summaries');
+    if (!canGenerate) {
       if (mounted) _showUpgradeDialog();
       return;
     }
@@ -90,7 +92,7 @@ class SummaryScreenState extends State<SummaryScreen> {
     });
 
     try {
-      final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
       final prompt =
           'Summarize the following text: ${_textController.text}';
       final response = await model.generateContent([Content.text(prompt)]);
@@ -102,7 +104,7 @@ class SummaryScreenState extends State<SummaryScreen> {
           _errorMessage = 'Could not generate a summary. Please try again.';
         });
       } else {
-        await _firestoreService.incrementUsage('summaries', userModel.uid);
+        await _firestoreService.incrementUsage(userModel.uid, 'summaries');
         setState(() {
           _summary = summary;
           _state = SummaryState.success;
@@ -170,11 +172,14 @@ class SummaryScreenState extends State<SummaryScreen> {
     final user = Provider.of<User?>(context, listen: false);
     if (user != null) {
       try {
-        await _firestoreService.addSummary(user.uid, {
-          'title': _pdfFileName ?? "Pasted Text Summary",
-          'summary': _summary,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _firestoreService.addSummary(
+          user.uid,
+          Summary(
+            id: '', // Firestore will generate this
+            content: _summary,
+            timestamp: Timestamp.now(),
+          ),
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Summary saved to library!')),

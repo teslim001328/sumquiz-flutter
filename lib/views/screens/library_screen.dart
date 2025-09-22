@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:myapp/models/flashcard_model.dart';
+import 'package:myapp/models/quiz_model.dart';
+import 'package:myapp/models/summary_model.dart';
 
 import '../../models/library_item.dart';
 import '../../models/user_model.dart';
@@ -31,7 +34,7 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     _tabController = TabController(length: 3, vsync: this);
     Connectivity().onConnectivityChanged.listen((result) {
       setState(() {
-        _isOffline = !result.contains(ConnectivityResult.none);
+        _isOffline = result == ConnectivityResult.none;
       });
     });
   }
@@ -49,8 +52,9 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     );
   }
 
-  void _navigateToCreationScreen(int tabIndex, UserModel user) {
-    if (!_firestoreService.canGenerate(_getToolType(tabIndex), user)) {
+  Future<void> _navigateToCreationScreen(int tabIndex, UserModel user) async {
+    bool canGenerate = await _firestoreService.canGenerate(user.uid, _getToolType(tabIndex));
+    if (!canGenerate) {
       _showUpgradeDialog();
       return;
     }
@@ -171,12 +175,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
                   style: GoogleFonts.roboto(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                  'Created on ${DateFormat.yMMMd().format(item.createdAt.toDate())}',
+                  'Created on ${DateFormat.yMMMd().format(item.timestamp.toDate())}',
                   style: GoogleFonts.openSans(),
-                ),
-                trailing: Text(
-                  item.content,
-                  style: GoogleFonts.openSans(color: Colors.grey[600]),
                 ),
               ),
             );
@@ -189,11 +189,17 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
   Stream<List<LibraryItem>> _getStreamForType(String userId, String type) {
     switch (type) {
       case 'summaries':
-        return _firestoreService.streamSummaries(userId);
+        return _firestoreService.streamSummaries(userId).map((summaries) => summaries
+            .map((s) => LibraryItem(id: s.id, title: s.content, type: LibraryItemType.summary, timestamp: s.timestamp))
+            .toList());
       case 'quizzes':
-        return _firestoreService.streamQuizzes(userId);
+        return _firestoreService.streamQuizzes(userId).map((quizzes) => quizzes
+            .map((q) => LibraryItem(id: q.id, title: q.title, type: LibraryItemType.quiz, timestamp: q.timestamp))
+            .toList());
       case 'flashcards':
-        return _firestoreService.streamFlashcards(userId);
+        return _firestoreService.streamFlashcards(userId).map((flashcards) => flashcards
+            .map((f) => LibraryItem(id: f.id, title: f.title, type: LibraryItemType.flashcards, timestamp: f.timestamp))
+            .toList());
       default:
         return Stream.value([]);
     }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +13,7 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../widgets/upgrade_modal.dart';
 import '../../models/flashcard_model.dart';
+import '../../models/flashcard.dart';
 
 class FlashcardsScreen extends StatefulWidget {
   const FlashcardsScreen({super.key});
@@ -38,7 +40,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       return;
     }
 
-    if (!_firestore.canGenerate('flashcards', userModel)) {
+    final canGenerate = await _firestore.canGenerate(userModel.uid, 'flashcards');
+    if (!canGenerate) {
       if (mounted) {
         _showUpgradeDialog();
       }
@@ -51,7 +54,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     });
 
     try {
-      final model = FirebaseAI.vertexAI().generativeModel(model: 'gemini-1.5-flash');
+      final model = FirebaseVertexAI.instance.generativeModel(model: 'gemini-1.5-flash');
       final prompt =
           'Create flashcards from the following text. Return a JSON list of objects, where each object has a "question" and an "answer". Text: ${_textController.text}';
       final response = await model.generateContent([Content.text(prompt)]);
@@ -83,7 +86,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         setState(() {
           _isLoading = false;
         });
-        await _firestore.incrementUsage('flashcards', _auth.currentUser!.uid);
+        await _firestore.incrementUsage(userModel.uid, 'flashcards');
       }
     }
   }
@@ -128,8 +131,12 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     try {
       await _firestore.saveFlashcards(
         _auth.currentUser!.uid,
-        _titleController.text,
-        _flashcards.map((f) => {'question': f.question, 'answer': f.answer}).toList(),
+        FlashcardSet(
+          id: '',
+          title: _titleController.text,
+          flashcards: _flashcards,
+          timestamp: Timestamp.now(),
+        ),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

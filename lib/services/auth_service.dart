@@ -1,11 +1,13 @@
 import 'dart:developer' as developer;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:myapp/models/user_model.dart';
 import 'firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance; // Singleton
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final FirestoreService _firestoreService = FirestoreService();
 
   AuthService(this._auth);
@@ -18,7 +20,15 @@ class AuthService {
         email: email,
         password: password,
       );
-      await _firestoreService.saveUserData(result.user!); // Non-null after creation
+      UserModel newUser = UserModel(
+        uid: result.user!.uid,
+        email: email,
+        name: '', // Or a default name
+        subscriptionStatus: 'Free',
+        dailyUsage: {},
+        lastReset: Timestamp.now(),
+      );
+      await _firestoreService.saveUserData(newUser);
       return result.user;
     } catch (e, s) {
       developer.log('Error creating user', error: e, stackTrace: s);
@@ -39,30 +49,36 @@ class AuthService {
     }
   }
 
-
   Future<User?> signInWithGoogle() async {
     try {
-      // 1. User-initiated sign-in
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return null; // User canceled
+      }
 
-      // 2. Get auth details (synchronous - NO await)
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
-      // 3. Create Firebase credential (idToken ONLY)
       final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 4. Sign in to Firebase
       final UserCredential result = await _auth.signInWithCredential(credential);
 
-      // 5. Save user data to Firestore
-      await _firestoreService.saveUserData(result.user!); 
+      UserModel newUser = UserModel(
+        uid: result.user!.uid,
+        email: result.user!.email ?? '',
+        name: result.user!.displayName ?? '',
+        subscriptionStatus: 'Free',
+        dailyUsage: {},
+        lastReset: Timestamp.now(),
+      );
+      await _firestoreService.saveUserData(newUser);
 
       return result.user;
     } catch (e, s) {
       developer.log('Error signing in with Google', error: e, stackTrace: s);
-      rethrow; // Propagate to UI for loading state reset
+      rethrow;
     }
   }
 
