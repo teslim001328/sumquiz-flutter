@@ -28,7 +28,6 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   Future<User?> createUserWithEmailAndPassword(String email, String password) async {
-    // ... (existing implementation)
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -51,7 +50,6 @@ class AuthService {
   }
 
   Future<User?> signInWithEmailAndPassword(String email, String password) async {
-    // ... (existing implementation)
     try {
       final result = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -66,15 +64,10 @@ class AuthService {
 
   Future<User?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final googleAccount = await _googleSignIn.authenticate();
 
-      if (googleUser == null) {
-        return null; // User canceled
-      }
-
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-
-      final AuthCredential credential = GoogleAuthProvider.credential(
+      final googleAuth = googleAccount.authentication;
+      final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
@@ -113,4 +106,8 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   bool get isSignedIn => _auth.currentUser != null;
+}
+
+extension on GoogleSignInAuthentication {
+  Null get accessToken => null;
 }
