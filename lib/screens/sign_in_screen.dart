@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignInScreen extends StatelessWidget {
   const SignInScreen({super.key});
@@ -13,7 +14,7 @@ class SignInScreen extends StatelessWidget {
       body: Center(
         child: ElevatedButton(
           onPressed: () {
-            AuthService().signInWithGoogle();
+            AuthService(FirebaseAuth.instance).signInWithGoogle();
           },
           child: const Text('Sign in with Google'),
         ),

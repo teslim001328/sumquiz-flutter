@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:developer' as developer;
 
-import 'package:firebase_vertexai/firebase_vertexai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -12,19 +12,7 @@ import '../models/flashcard.dart';
 
 class AIService {
   GenerativeModel _getModel() {
-    return FirebaseVertexAI.instance.generativeModel(
-      model: 'gemini-1.5-pro',
-      safetySettings: [
-        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none, null),
-        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none, null),
-        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none, null),
-        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none, null),
-      ],
-      generationConfig: GenerationConfig(
-        maxOutputTokens: 2048,
-        temperature: 0.7,
-      ),
-    );
+    return FirebaseAI.googleAI().generativeModel(model: 'gemini-1.5-pro');
   }
 
   bool _isAuthenticated() => FirebaseAuth.instance.currentUser != null;
@@ -54,7 +42,9 @@ class AIService {
     }
 
     try {
-      final response = await _getModel().generateContent([Content.text('Summarize the following text:\n$fullText')]);
+      final response = await _getModel().generateContent([
+        Content.text('Summarize the following text:\n$fullText')
+      ]);
       return response.text?.trim() ?? "Error: Could not generate a summary.";
     } catch (e) {
       developer.log("Error generating summary: $e", name: 'AIService.generateSummary');
@@ -79,7 +69,9 @@ Do not include any markdown formatting, code blocks, or additional text.
 Text: $text''';
 
     try {
-      final response = await _getModel().generateContent([Content.text(prompt)]);
+      final response = await _getModel().generateContent([
+        Content.text(prompt)
+      ]);
       final jsonString = response.text?.trim() ?? '';
       
       // Clean any potential markdown formatting
@@ -120,7 +112,9 @@ Do not include any markdown formatting, code blocks, or additional text.
 Text: $text''';
 
     try {
-      final response = await _getModel().generateContent([Content.text(prompt)]);
+      final response = await _getModel().generateContent([
+        Content.text(prompt)
+      ]);
       final jsonString = response.text?.trim() ?? '';
 
       // Clean any potential markdown formatting
