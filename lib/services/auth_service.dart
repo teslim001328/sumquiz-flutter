@@ -1,4 +1,3 @@
-
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -64,9 +63,14 @@ class AuthService {
 
   Future<User?> signInWithGoogle() async {
     try {
-      final googleAccount = await _googleSignIn.authenticate();
+      final googleAccount = await _googleSignIn.signIn();
+      
+      if (googleAccount == null) {
+        // User canceled the sign-in
+        return null;
+      }
 
-      final googleAuth = googleAccount.authentication;
+      final googleAuth = await googleAccount.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -106,8 +110,4 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   bool get isSignedIn => _auth.currentUser != null;
-}
-
-extension on GoogleSignInAuthentication {
-  Null get accessToken => null;
 }

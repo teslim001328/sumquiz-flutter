@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +8,7 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/upgrade_service.dart';
+import 'services/local_database_service.dart';
 import 'views/screens/auth_screen.dart';
 import 'views/screens/main_screen.dart';
 import 'models/user_model.dart';
@@ -16,6 +16,10 @@ import 'views/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize local database
+  await LocalDatabaseService().init();
+  
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -48,6 +52,9 @@ class MyApp extends StatelessWidget {
         Provider<UpgradeService>(
           create: (_) => UpgradeService(),
           dispose: (_, service) => service.dispose(),
+        ),
+        Provider<LocalDatabaseService>(
+          create: (_) => LocalDatabaseService(),
         ),
         StreamProvider<User?>(
           create: (context) => context.read<AuthService>().authStateChanges,

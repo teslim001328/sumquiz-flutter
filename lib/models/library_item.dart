@@ -7,11 +7,13 @@ class LibraryItem {
   final String title;
   final LibraryItemType type;
   final Timestamp timestamp;
+  final List<String> folderIds; // IDs of folders this item belongs to
 
   LibraryItem({
     required this.id,
     required this.title,
     required this.type,
     required this.timestamp,
+    this.folderIds = const [],
   });
 }

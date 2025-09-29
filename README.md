@@ -1,16 +1,29 @@
-# myapp
+# SumQuiz
 
-A new Flutter project.
+An AI-powered study tool for creating summaries, quizzes, and flashcards.
+
+## Features
+
+- Generate summaries from text or PDF documents using AI
+- Create multiple-choice quizzes from your content
+- Generate flashcards for effective memorization
+- Save and organize your study materials
+- Track your learning progress
+- Sync across devices with Firebase
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+1. Clone the repository
+2. Run `flutter pub get` to install dependencies
+3. Set up Firebase for your project
+4. Add your Firebase configuration files
+5. Run `flutter run` to start the application
 
-A few resources to get you started if this is your first Flutter project:
+## Requirements
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Flutter 3.0 or higher
+- Firebase project with Authentication and Firestore enabled
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
