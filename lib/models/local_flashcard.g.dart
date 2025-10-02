@@ -19,17 +19,19 @@ class LocalFlashcardAdapter extends TypeAdapter<LocalFlashcard> {
     return LocalFlashcard(
       question: fields[0] as String,
       answer: fields[1] as String,
-    );
+    )..id = fields[2] as String;
   }
 
   @override
   void write(BinaryWriter writer, LocalFlashcard obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.question)
       ..writeByte(1)
-      ..write(obj.answer);
+      ..write(obj.answer)
+      ..writeByte(2)
+      ..write(obj.id);
   }
 
   @override

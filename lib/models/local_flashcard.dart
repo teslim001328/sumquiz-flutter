@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 part 'local_flashcard.g.dart';
 
@@ -10,13 +11,17 @@ class LocalFlashcard extends HiveObject {
   @HiveField(1)
   late String answer;
 
+  @HiveField(2)
+  late String id;
+
   LocalFlashcard({
     required this.question,
     required this.answer,
-  });
+  }) : id = const Uuid().v4();
 
   LocalFlashcard.empty() {
     question = '';
     answer = '';
+    id = const Uuid().v4();
   }
 }

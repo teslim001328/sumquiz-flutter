@@ -1,110 +1,74 @@
 import 'package:share_plus/share_plus.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import '../models/summary_model.dart';
-import '../models/quiz_model.dart';
-import '../models/flashcard_model.dart';
+import 'dart:developer' as developer;
+
+import '../models/local_summary.dart';
+import '../models/local_quiz.dart';
+import '../models/local_flashcard_set.dart';
+import 'pdf_export_service.dart';
 
 class SharingService {
-  static final SharingService _instance = SharingService._internal();
-  factory SharingService() => _instance;
-  SharingService._internal();
+  final PdfExportService _pdfExportService = PdfExportService();
 
-  Future<void> shareSummary(Summary summary) async {
+  Future<void> shareSummary(LocalSummary summary) async {
     try {
-      // Create a temporary text file with the summary content
-      final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/summary_${summary.id}.txt';
-      final file = File(filePath);
-      await file.writeAsString(summary.content);
-      
-      // Share the file
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Summary: ${summary.content.substring(0, summary.content.length > 50 ? 50 : summary.content.length)}...',
-        text: 'Check out this summary I created with SumQuiz!',
+      final pdfPath = await _generatePdf(summary, _pdfExportService.exportSummary);
+      await Share.shareXFiles([XFile(pdfPath)], text: 'Here is the summary you requested!');
+    } catch (e, s) {
+      developer.log(
+        'Error sharing summary',
+        name: 'SharingService',
+        error: e,
+        stackTrace: s,
       );
-    } catch (e) {
-      print('Error sharing summary: $e');
-      rethrow;
     }
   }
 
-  Future<void> shareQuiz(Quiz quiz) async {
+  Future<void> shareQuiz(LocalQuiz quiz) async {
     try {
-      // Create a formatted text representation of the quiz
-      final buffer = StringBuffer();
-      buffer.writeln('Quiz: ${quiz.title}');
-      buffer.writeln('=' * quiz.title.length);
-      buffer.writeln();
-      
-      for (int i = 0; i < quiz.questions.length; i++) {
-        final question = quiz.questions[i];
-        buffer.writeln('${i + 1}. ${question.question}');
-        for (int j = 0; j < question.options.length; j++) {
-          buffer.writeln('   ${String.fromCharCode(65 + j)}. ${question.options[j]}');
-        }
-        buffer.writeln();
-      }
-      
-      // Create a temporary text file
-      final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/quiz_${quiz.id}.txt';
-      final file = File(filePath);
-      await file.writeAsString(buffer.toString());
-      
-      // Share the file
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Quiz: ${quiz.title}',
-        text: 'Check out this quiz I created with SumQuiz!',
+      final pdfPath = await _generatePdf(quiz, _pdfExportService.exportQuiz);
+      await Share.shareXFiles([XFile(pdfPath)], text: 'Here is the quiz you requested!');
+    } catch (e, s) {
+      developer.log(
+        'Error sharing quiz',
+        name: 'SharingService',
+        error: e,
+        stackTrace: s,
       );
-    } catch (e) {
-      print('Error sharing quiz: $e');
-      rethrow;
     }
   }
 
-  Future<void> shareFlashcardSet(FlashcardSet flashcardSet) async {
+  Future<void> shareFlashcardSet(LocalFlashcardSet flashcardSet) async {
     try {
-      // Create a formatted text representation of the flashcards
-      final buffer = StringBuffer();
-      buffer.writeln('Flashcard Set: ${flashcardSet.title}');
-      buffer.writeln('=' * flashcardSet.title.length);
-      buffer.writeln();
-      
-      for (int i = 0; i < flashcardSet.flashcards.length; i++) {
-        final flashcard = flashcardSet.flashcards[i];
-        buffer.writeln('Question ${i + 1}: ${flashcard.question}');
-        buffer.writeln('Answer: ${flashcard.answer}');
-        buffer.writeln('-' * 20);
-        buffer.writeln();
-      }
-      
-      // Create a temporary text file
-      final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/flashcards_${flashcardSet.id}.txt';
-      final file = File(filePath);
-      await file.writeAsString(buffer.toString());
-      
-      // Share the file
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Flashcards: ${flashcardSet.title}',
-        text: 'Check out these flashcards I created with SumQuiz!',
+      final pdfPath = await _generatePdf(flashcardSet, _pdfExportService.exportFlashcardSet);
+      await Share.shareXFiles([XFile(pdfPath)], text: 'Here are the flashcards you requested!');
+    } catch (e, s) {
+      developer.log(
+        'Error sharing flashcard set',
+        name: 'SharingService',
+        error: e,
+        stackTrace: s,
       );
-    } catch (e) {
-      print('Error sharing flashcards: $e');
-      rethrow;
     }
   }
 
-  Future<void> shareText(String text, String subject) async {
+  Future<void> shareText(String text) async {
     try {
-      await Share.share(text, subject: subject);
-    } catch (e) {
-      print('Error sharing text: $e');
-      rethrow;
+      await Share.share(text);
+    } catch (e, s) {
+      developer.log(
+        'Error sharing text',
+        name: 'SharingService',
+        error: e,
+        stackTrace: s,
+      );
     }
+  }
+
+  Future<String> _generatePdf<T>(T data, Future<void> Function(T) exportFunction) async {
+    // This is a simplified stand-in for the actual PDF generation logic
+    // that would be handled by the PdfExportService.
+    await exportFunction(data);
+    // In a real implementation, this would return the path to the generated PDF.
+    return 'path/to/your/pdf.pdf';
   }
 }

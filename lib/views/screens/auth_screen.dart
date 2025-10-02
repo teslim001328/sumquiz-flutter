@@ -1,59 +1,57 @@
-cdimport 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../services/auth_service.dart';
+import 'package:myapp/services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  AuthScreenState createState() => AuthScreenState();
+  State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _email = '';
-  String _password = '';
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLogin = true;
 
-  Future<void> _trySubmit() async {
-    final isValid = _formKey.currentState!.validate();
-    FocusScope.of(context).unfocus();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
-    if (isValid) {
-      _formKey.currentState!.save();
+  void _submit() async {
+    if (_formKey.currentState!.validate()) {
+      final authService = Provider.of<AuthService>(context, listen: false);
       try {
         if (_isLogin) {
-          await context.read<AuthService>().signInWithEmailAndPassword(_email, _password);
+          await authService.signInWithEmailAndPassword(
+            _emailController.text,
+            _passwordController.text,
+          );
         } else {
-          await context.read<AuthService>().createUserWithEmailAndPassword(_email, _password);
+          await authService.createUserWithEmailAndPassword(
+            _emailController.text,
+            _passwordController.text,
+          );
         }
-      } on FirebaseAuthException catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Authentication failed.')),
-        );
       } catch (e) {
-        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An unexpected error occurred.')),
+          SnackBar(content: Text(e.toString())),
         );
       }
     }
   }
 
-  Future<void> _signInWithGoogle() async {
+  void _signInWithGoogle() async {
     try {
-      await context.read<AuthService>().signInWithGoogle();
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'An unknown error occurred.')),
-      );
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signInWithGoogle();
     } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Google Sign-In Failed. Please try again.')),
+        SnackBar(content: Text('Failed to sign in with Google: $e')),
       );
     }
   }
@@ -65,75 +63,56 @@ class AuthScreenState extends State<AuthScreen> {
         title: Text(_isLogin ? 'Login' : 'Sign Up'),
       ),
       body: Center(
-        child: Card(
-          margin: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextFormField(
-                      key: const ValueKey('email'),
-                      validator: (value) {
-                        if (value!.isEmpty || !value.contains('@')) {
-                          return 'Please enter a valid email address.';
-                        }
-                        return null;
-                      },
-                      onSaved: (value) {
-                        _email = value!;
-                      },
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                      ),
-                    ),
-                    TextFormField(
-                      key: const ValueKey('password'),
-                      validator: (value) {
-                        if (value!.isEmpty || value.length < 7) {
-                          return 'Password must be at least 7 characters long.';
-                        }
-                        return null;
-                      },
-                      onSaved: (value) {
-                        _password = value!;
-                      },
-                      obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Password'),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _trySubmit,
-                      child: Text(_isLogin ? 'Login' : 'Sign Up'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _isLogin = !_isLogin;
-                        });
-                      },
-                      child: Text(_isLogin
-                          ? 'Create new account'
-                          : 'I already have an account'),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.g_mobiledata), // Replace with a proper Google icon
-                      label: const Text('Sign in with Google'),
-                      onPressed: _signInWithGoogle,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                      ),
-                    ), 
-                  ],
-                ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration: const InputDecoration(labelText: 'Password'),
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _submit,
+                    child: Text(_isLogin ? 'Login' : 'Sign Up'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isLogin = !_isLogin;
+                      });
+                    },
+                    child: Text(_isLogin
+                        ? 'Create an account'
+                        : 'I already have an account'),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: _signInWithGoogle,
+                    child: const Text('Sign in with Google'),
+                  ),
+                ],
               ),
             ),
           ),

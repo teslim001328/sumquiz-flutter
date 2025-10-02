@@ -1,14 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/editable_content.dart';
 import '../../models/quiz_question.dart';
 import '../../models/flashcard.dart';
 import '../../services/firestore_service.dart';
-import '../../models/user_model.dart';
 
 class EditContentScreen extends StatefulWidget {
   final EditableContent content;
@@ -259,7 +256,7 @@ class EditContentScreenState extends State<EditContentScreen> {
         const Text('Flashcards', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         for (int i = 0; i < _flashcards.length; i++)
-          _buildFlashcardEditor(i),
+          _buildSingleFlashcardEditor(i),
         const SizedBox(height: 16),
         ElevatedButton.icon(
           onPressed: _addFlashcard,
@@ -270,7 +267,7 @@ class EditContentScreenState extends State<EditContentScreen> {
     );
   }
 
-  Widget _buildFlashcardEditor(int index) {
+  Widget _buildSingleFlashcardEditor(int index) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(

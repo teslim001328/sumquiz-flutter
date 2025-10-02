@@ -12,7 +12,6 @@ import 'package:myapp/models/local_quiz_question.dart';
 import 'package:myapp/models/local_flashcard.dart';
 import 'package:myapp/models/local_flashcard_set.dart';
 import 'package:myapp/services/local_database_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;

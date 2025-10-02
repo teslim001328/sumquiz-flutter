@@ -4,8 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:share_plus/share_plus.dart';
-import 'dart:io';
 
 import '../../models/library_item.dart';
 import '../../models/user_model.dart';

@@ -7,22 +7,10 @@ import 'firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirestoreService _firestoreService = FirestoreService();
 
   AuthService(this._auth);
-
-  Future<void> initializeGoogleSignIn({String? clientId, String? serverClientId}) async {
-    try {
-      await _googleSignIn.initialize(
-        clientId: clientId,
-        serverClientId: serverClientId,
-      );
-    } catch (e, s) {
-      developer.log('Error initializing Google Sign In', error: e, stackTrace: s);
-      rethrow;
-    }
-  }
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 

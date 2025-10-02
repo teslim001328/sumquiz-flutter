@@ -1,141 +1,62 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:developer' as developer;
-
 import 'package:firebase_ai/firebase_ai.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
-import '../models/quiz_question.dart';
-import '../models/flashcard.dart';
+import 'package:flutter/foundation.dart' hide Summary;
+import '../../models/quiz_model.dart';
+import '../../models/summary_model.dart';
 
 class AIService {
-  GenerativeModel _getModel() {
-    return FirebaseAI.googleAI().generativeModel(model: 'gemini-1.5-pro');
-  }
+  final GenerativeModel _model;
 
-  bool _isAuthenticated() => FirebaseAuth.instance.currentUser != null;
+  AIService() : _model = FirebaseAI.instance.googleAI().generativeModel(model: 'gemini-1.5-flash');
+
+  Future<Quiz> generateQuizFromSummary(Summary summary) async {
+    try {
+      final prompt =
+          'Generate a 10-question multiple-choice quiz based on the following summary. '
+          'Provide the output in JSON format with the following structure: '
+          '{"title": "Quiz Title", "questions": [{"question": "...", "options": ["...", "...", "..."], "correctAnswer": "..."}]}';
+
+      final response = await _model.generateContent([
+        Content.text(prompt),
+        Content.text('Summary: ${summary.content}'),
+      ]);
+
+      if (response.text != null) {
+        final jsonResponse = jsonDecode(response.text!);
+        final quiz = Quiz.fromJson(jsonResponse);
+        return quiz;
+      } else {
+        throw Exception('Failed to generate quiz: No response from model.');
+      }
+    } catch (e) {
+      debugPrint('Error generating quiz: $e');
+      rethrow;
+    }
+  }
 
   Future<String> generateSummary(String text, {File? pdfFile}) async {
-    if (!_isAuthenticated()) {
-      throw Exception('User must be signed in to use AI features');
-    }
-
-    String fullText = text;
-
-    if (pdfFile != null) {
-      try {
-        final Uint8List pdfBytes = await pdfFile.readAsBytes();
-        final PdfDocument document = PdfDocument(inputBytes: pdfBytes);
-        final String pdfText = PdfTextExtractor(document).extractText();
-        document.dispose();
-        fullText += "\n\n$pdfText";
-      } catch (e) {
-        developer.log("Error reading PDF: $e", name: 'AIService.generateSummary');
-        return "Error: Could not process the PDF file.";
-      }
-    }
-
-    if (fullText.trim().isEmpty) {
-      return "Error: No content provided for summarization.";
-    }
-
-    try {
-      final response = await _getModel().generateContent([
-        Content.text('Summarize the following text:\n$fullText')
-      ]);
-      return response.text?.trim() ?? "Error: Could not generate a summary.";
-    } catch (e) {
-      developer.log("Error generating summary: $e", name: 'AIService.generateSummary');
-      return "Error: An unexpected error occurred while generating the summary.";
-    }
+    // This is just a placeholder implementation.
+    // In a real application, you would use the AI service to generate a summary.
+    await Future.delayed(const Duration(seconds: 2));
+    return "This is a generated summary of the provided text.";
   }
 
-  Future<List<QuizQuestion>> generateQuiz(String text) async {
-    if (!_isAuthenticated()) {
-      throw Exception('User must be signed in to use AI features');
-    }
-
-    final prompt = '''
-Create a multiple-choice quiz from the following text. The goal is to test understanding of the main concepts. 
-Return ONLY a valid JSON array of questions, where each object has:
-- "question": string
-- "options": array of exactly 4 strings
-- "correctAnswer": string (must be one of the provided options)
-
-Do not include any markdown formatting, code blocks, or additional text.
-
-Text: $text''';
-
-    try {
-      final response = await _getModel().generateContent([
-        Content.text(prompt)
-      ]);
-      final jsonString = response.text?.trim() ?? '';
-      
-      // Clean any potential markdown formatting
-      String cleanedJsonString = jsonString;
-      if (jsonString.startsWith('```json')) {
-        cleanedJsonString = jsonString.substring(7, jsonString.length - 3).trim();
-      } else if (jsonString.startsWith('```')) {
-        cleanedJsonString = jsonString.substring(3, jsonString.length - 3).trim();
+  Future<List<dynamic>> generateQuiz(String text) async {
+    // This is just a placeholder implementation.
+    // In a real application, you would use the AI service to generate a quiz.
+    await Future.delayed(const Duration(seconds: 2));
+    return [
+      {
+        "question": "What is the capital of France?",
+        "options": ["London", "Paris", "Berlin", "Madrid"],
+        "correctAnswer": "Paris"
+      },
+      {
+        "question": "What is the largest planet in our solar system?",
+        "options": ["Mars", "Jupiter", "Earth", "Saturn"],
+        "correctAnswer": "Jupiter"
       }
-
-      final jsonResponse = json.decode(cleanedJsonString);
-
-      if (jsonResponse is List) {
-        return jsonResponse.map((data) => QuizQuestion.fromJson(data)).toList();
-      } else {
-        developer.log("Invalid JSON structure: expected List", name: 'AIService.generateQuiz');
-        return [];
-      }
-    } catch (e, s) {
-      developer.log("Error decoding quiz JSON: $e", stackTrace: s, name: 'AIService.generateQuiz');
-      return [];
-    }
-  }
-
-  Future<List<Flashcard>> generateFlashcards(String text) async {
-    if (!_isAuthenticated()) {
-      throw Exception('User must be signed in to use AI features');
-    }
-
-    final prompt = '''
-Create a set of flashcards from the following text. Focus on key terms and definitions.
-Return ONLY a valid JSON array of flashcards, where each object has:
-- "question": string
-- "answer": string
-
-Do not include any markdown formatting, code blocks, or additional text.
-
-Text: $text''';
-
-    try {
-      final response = await _getModel().generateContent([
-        Content.text(prompt)
-      ]);
-      final jsonString = response.text?.trim() ?? '';
-
-      // Clean any potential markdown formatting
-      String cleanedJsonString = jsonString;
-      if (jsonString.startsWith('```json')) {
-        cleanedJsonString = jsonString.substring(7, jsonString.length - 3).trim();
-      } else if (jsonString.startsWith('```')) {
-        cleanedJsonString = jsonString.substring(3, jsonString.length - 3).trim();
-      }
-          
-      final jsonResponse = json.decode(cleanedJsonString);
-
-      if (jsonResponse is List) {
-        return jsonResponse.map((data) => Flashcard.fromJson(data)).toList();
-      } else {
-        developer.log("Invalid JSON structure: expected List", name: 'AIService.generateFlashcards');
-        return [];
-      }
-    } catch (e, s) {
-      developer.log("Error decoding flashcard JSON: $e", stackTrace: s, name: 'AIService.generateFlashcards');
-      return [];
-    }
+    ];
   }
 }

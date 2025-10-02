@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/flashcard_model.dart';
 import '../../services/spaced_repetition_service.dart';
 
 class SpacedRepetitionScreen extends StatefulWidget {

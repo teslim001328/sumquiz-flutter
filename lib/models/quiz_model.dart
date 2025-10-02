@@ -26,6 +26,17 @@ class Quiz {
     );
   }
 
+  factory Quiz.fromJson(Map<String, dynamic> json) {
+    return Quiz(
+      id: '', // Not available from the AI response
+      title: json['title'] as String,
+      questions: (json['questions'] as List<dynamic>)
+          .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
+          .toList(),
+      timestamp: Timestamp.now(), // Set a default timestamp
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'title': title,

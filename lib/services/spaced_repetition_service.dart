@@ -1,159 +1,74 @@
+import 'package:hive/hive.dart';
 import 'dart:math';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/spaced_repetition.dart';
-import '../models/flashcard_model.dart';
-import 'local_database_service.dart';
+import '../models/spaced_repetition_item.dart';
+import '../models/local_flashcard.dart';
+import 'dart:developer' as developer;
 
 class SpacedRepetitionService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final LocalDatabaseService _localDb = LocalDatabaseService();
+  final Box<SpacedRepetitionItem> _srsBox;
 
-  static final SpacedRepetitionService _instance = SpacedRepetitionService._internal();
-  factory SpacedRepetitionService() => _instance;
-  SpacedRepetitionService._internal();
+  SpacedRepetitionService(this._srsBox);
 
-  /// Initialize a new spaced repetition item for a flashcard
-  Future<SpacedRepetitionItem> initializeSpacedRepetition(
-    String flashcardId,
-    String userId,
-  ) async {
+  Future<void> scheduleReview(String flashcardId) async {
     final now = DateTime.now();
-    final item = SpacedRepetitionItem(
-      id: 'sr_$flashcardId',
-      flashcardId: flashcardId,
-      userId: userId,
-      nextReviewDate: now, // Available for review immediately
-      interval: 1, // 1 day
-      easeFactor: 2.5, // Default ease factor
-      repetitionCount: 0, // Never reviewed
+    final newItem = SpacedRepetitionItem(
+      contentId: flashcardId,
+      contentType: 'flashcard',
       lastReviewed: now,
       createdAt: now,
       updatedAt: now,
     );
-
-    // Save to local database
-    await _localDb.saveSpacedRepetitionItem(item);
-    
-    return item;
+    await _srsBox.put(flashcardId, newItem);
   }
 
-  /// Get flashcards that are due for review
-  Future<List<Flashcard>> getDueFlashcards(String userId) async {
-    final now = DateTime.now();
-    final dueItems = await _localDb.getDueSpacedRepetitionItems(userId, now);
-    
-    final flashcards = <Flashcard>[];
+  Future<List<LocalFlashcard>> getDueFlashcards(List<LocalFlashcard> allFlashcards) async {
+    final dueItems = _srsBox.values.where((item) {
+      if (item.contentType != 'flashcard') return false;
+      final interval = _getInterval(item.repetitionCount);
+      final dueDate = item.lastReviewed.add(Duration(days: interval));
+      return DateTime.now().isAfter(dueDate);
+    }).toList();
+
+    final dueFlashcards = <LocalFlashcard>[];
     for (final item in dueItems) {
       try {
-        final flashcardDoc = await _db
-            .collection('users')
-            .doc(userId)
-            .collection('flashcard_sets')
-            .doc(item.flashcardId)
-            .get();
-        
-        if (flashcardDoc.exists) {
-          final flashcardSet = FlashcardSet.fromFirestore(flashcardDoc);
-          // Find the specific flashcard in the set
-          final flashcard = flashcardSet.flashcards.firstWhere(
-            (fc) => fc.id == item.flashcardId,
-            orElse: () => flashcardSet.flashcards.first,
-          );
-          flashcards.add(flashcard);
-        }
+        final flashcard = allFlashcards.firstWhere((fc) => fc.id == item.contentId);
+        dueFlashcards.add(flashcard);
       } catch (e) {
-        print('Error fetching flashcard: $e');
+        developer.log('Flashcard with id ${item.contentId} not found', name: 'SpacedRepetitionService');
       }
     }
-    
-    return flashcards;
+    return dueFlashcards;
   }
 
-  /// Process a review response using the SM-2 algorithm
-  Future<void> processReview(
-    String flashcardId,
-    String userId,
-    int quality, // 0-5 rating (0 = complete blackout, 5 = perfect response)
-  ) async {
-    // Get the current spaced repetition item
-    SpacedRepetitionItem? item = 
-        await _localDb.getSpacedRepetitionItem('sr_$flashcardId');
-    
-    if (item == null) {
-      // Initialize if not exists
-      item = await initializeSpacedRepetition(flashcardId, userId);
-    }
+  Future<void> updateReview(String flashcardId, bool answeredCorrectly) async {
+    final item = _srsBox.get(flashcardId);
+    if (item != null) {
+      final now = DateTime.now();
+      int newRepetitionCount;
 
-    final now = DateTime.now();
-    
-    // Calculate new values based on SM-2 algorithm
-    int newInterval;
-    double newEaseFactor = item.easeFactor;
-    int newRepetitionCount = item.repetitionCount;
-
-    if (quality >= 3) {
-      // Correct response
-      if (item.repetitionCount == 0) {
-        newInterval = 1; // 1 day
-      } else if (item.repetitionCount == 1) {
-        newInterval = 6; // 6 days
+      if (answeredCorrectly) {
+        newRepetitionCount = item.repetitionCount + 1;
       } else {
-        newInterval = (item.interval * item.easeFactor).round();
+        newRepetitionCount = 0; // Reset progress
       }
-      
-      newRepetitionCount = item.repetitionCount + 1;
-      
-      // Adjust ease factor
-      newEaseFactor = item.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-    } else {
-      // Incorrect response
-      newRepetitionCount = 0;
-      newInterval = 1; // Reset to 1 day
-      
-      // Decrease ease factor
-      newEaseFactor = item.easeFactor - 0.2;
+
+      final updatedItem = SpacedRepetitionItem(
+        contentId: item.contentId,
+        contentType: item.contentType,
+        repetitionCount: newRepetitionCount,
+        lastReviewed: now,
+        createdAt: item.createdAt,
+        updatedAt: now,
+      );
+
+      await _srsBox.put(flashcardId, updatedItem);
     }
-
-    // Ensure ease factor doesn't go below 1.3
-    if (newEaseFactor < 1.3) {
-      newEaseFactor = 1.3;
-    }
-
-    // Calculate next review date
-    final nextReviewDate = now.add(Duration(days: newInterval));
-
-    // Update the item
-    final updatedItem = SpacedRepetitionItem(
-      id: item.id,
-      flashcardId: item.flashcardId,
-      userId: item.userId,
-      nextReviewDate: nextReviewDate,
-      interval: newInterval,
-      easeFactor: newEaseFactor,
-      repetitionCount: newRepetitionCount,
-      lastReviewed: now,
-      createdAt: item.createdAt,
-      updatedAt: now,
-    );
-
-    // Save updated item
-    await _localDb.saveSpacedRepetitionItem(updatedItem);
   }
 
-  /// Get statistics for spaced repetition
-  Future<Map<String, dynamic>> getStatistics(String userId) async {
-    final now = DateTime.now();
-    final allItems = await _localDb.getAllSpacedRepetitionItems(userId);
-    final dueItems = await _localDb.getDueSpacedRepetitionItems(userId, now);
-    
-    return {
-      'totalCards': allItems.length,
-      'dueCards': dueItems.length,
-      'reviewedToday': allItems.where((item) => 
-        item.lastReviewed.day == now.day && 
-        item.lastReviewed.month == now.month && 
-        item.lastReviewed.year == now.year
-      ).length,
-    };
+  int _getInterval(int repetitionCount) {
+    if (repetitionCount == 0) return 1;
+    if (repetitionCount == 1) return 3;
+    return (pow(2, repetitionCount) * 2).toInt();
   }
 }

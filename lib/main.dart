@@ -26,11 +26,6 @@ void main() async {
 
   // Create and initialize AuthService
   final authService = AuthService(FirebaseAuth.instance);
-  // TODO: Replace with your actual client IDs if needed for web or server-side auth
-  await authService.initializeGoogleSignIn(
-    // clientId: 'YOUR_WEB_CLIENT_ID',
-    // serverClientId: 'YOUR_SERVER_CLIENT_ID',
-  );
 
   FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
   runApp(MyApp(authService: authService));

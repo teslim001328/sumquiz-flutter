@@ -13,7 +13,9 @@ import '../../models/quiz_question.dart';
 import '../../models/quiz_model.dart';
 
 class QuizScreen extends StatefulWidget {
-  const QuizScreen({super.key});
+  final Quiz? quiz;
+
+  const QuizScreen({super.key, this.quiz});
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -30,6 +32,15 @@ class _QuizScreenState extends State<QuizScreen> {
   int _currentQuestionIndex = 0;
   int? _selectedAnswerIndex;
   int _score = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.quiz != null) {
+      _questions = widget.quiz!.questions;
+      _titleController.text = widget.quiz!.title;
+    }
+  }
 
   Future<void> _generateQuiz() async {
     final userModel = Provider.of<UserModel?>(context, listen: false);
@@ -244,10 +255,10 @@ class _QuizScreenState extends State<QuizScreen> {
                     label: const Text('Generate Quiz'),
                   ),
                 ],
-              ),
-            if (_isLoading)
+              )
+            else if (_isLoading)
               const Center(child: CircularProgressIndicator())
-            else if (_questions.isNotEmpty)
+            else
               Expanded(
                 child: Column(
                   children: [

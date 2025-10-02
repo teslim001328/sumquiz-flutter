@@ -10,6 +10,9 @@ import '../models/quiz_model.dart';
 import '../models/flashcard_model.dart';
 import '../models/quiz_question.dart';
 import '../models/flashcard.dart';
+import '../models/local_quiz_question.dart';
+import '../models/local_flashcard.dart';
+import 'dart:developer' as developer;
 
 class SyncService {
   final LocalDatabaseService _localDb;
@@ -31,9 +34,8 @@ class SyncService {
       
       // Sync flashcard sets
       await _syncFlashcardSets(user.uid);
-    } catch (e) {
-      // Handle sync error
-      print('Error during sync: $e');
+    } catch (e, s) {
+      developer.log('Error during sync', name: 'SyncService', error: e, stackTrace: s);
     }
   }
 
@@ -60,8 +62,8 @@ class SyncService {
 
         // Mark as synced locally
         await _localDb.updateSummarySyncStatus(localSummary.id, true);
-      } catch (e) {
-        print('Error syncing summary ${localSummary.id}: $e');
+      } catch (e, s) {
+        developer.log('Error syncing summary ${localSummary.id}', name: 'SyncService', error: e, stackTrace: s);
       }
     }
 
@@ -77,14 +79,14 @@ class SyncService {
       if (localSummary == null) {
         // Summary exists in Firestore but not locally, download it
         final summary = Summary.fromFirestore(doc);
-        final localSummary = LocalSummary(
+        final newLocalSummary = LocalSummary(
           id: summary.id,
           content: summary.content,
           timestamp: summary.timestamp.toDate(),
           isSynced: true,
           userId: userId,
         );
-        await _localDb.saveSummary(localSummary);
+        await _localDb.saveSummary(newLocalSummary);
       } else {
         // Check if Firestore version is newer
         final firestoreSummary = Summary.fromFirestore(doc);
@@ -129,8 +131,8 @@ class SyncService {
 
         // Mark as synced locally
         await _localDb.updateQuizSyncStatus(localQuiz.id, true);
-      } catch (e) {
-        print('Error syncing quiz ${localQuiz.id}: $e');
+      } catch (e, s) {
+        developer.log('Error syncing quiz ${localQuiz.id}', name: 'SyncService', error: e, stackTrace: s);
       }
     }
 
@@ -146,7 +148,7 @@ class SyncService {
       if (localQuiz == null) {
         // Quiz exists in Firestore but not locally, download it
         final quiz = Quiz.fromFirestore(doc);
-        final localQuiz = LocalQuiz(
+        final newLocalQuiz = LocalQuiz(
           id: quiz.id,
           title: quiz.title,
           questions: quiz.questions
@@ -160,7 +162,7 @@ class SyncService {
           isSynced: true,
           userId: userId,
         );
-        await _localDb.saveQuiz(localQuiz);
+        await _localDb.saveQuiz(newLocalQuiz);
       } else {
         // Check if Firestore version is newer
         final firestoreQuiz = Quiz.fromFirestore(doc);
@@ -211,8 +213,8 @@ class SyncService {
 
         // Mark as synced locally
         await _localDb.updateFlashcardSetSyncStatus(localFlashcardSet.id, true);
-      } catch (e) {
-        print('Error syncing flashcard set ${localFlashcardSet.id}: $e');
+      } catch (e, s) {
+        developer.log('Error syncing flashcard set ${localFlashcardSet.id}', name: 'SyncService', error: e, stackTrace: s);
       }
     }
 
@@ -228,7 +230,7 @@ class SyncService {
       if (localFlashcardSet == null) {
         // Flashcard set exists in Firestore but not locally, download it
         final flashcardSet = FlashcardSet.fromFirestore(doc);
-        final localFlashcardSet = LocalFlashcardSet(
+        final newLocalFlashcardSet = LocalFlashcardSet(
           id: flashcardSet.id,
           title: flashcardSet.title,
           flashcards: flashcardSet.flashcards
@@ -241,7 +243,7 @@ class SyncService {
           isSynced: true,
           userId: userId,
         );
-        await _localDb.saveFlashcardSet(localFlashcardSet);
+        await _localDb.saveFlashcardSet(newLocalFlashcardSet);
       } else {
         // Check if Firestore version is newer
         final firestoreFlashcardSet = FlashcardSet.fromFirestore(doc);
@@ -264,6 +266,6 @@ class SyncService {
 
   Future<bool> isConnected() async {
     final connectivityResult = await Connectivity().checkConnectivity();
-    return connectivityResult != ConnectivityResult.none;
+    return !connectivityResult.contains(ConnectivityResult.none);
   }
 }

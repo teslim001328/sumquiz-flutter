@@ -13,6 +13,7 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
+import 'quiz_screen.dart';
 
 enum SummaryState { initial, loading, error, success }
 
@@ -30,6 +31,7 @@ class SummaryScreenState extends State<SummaryScreen> {
   SummaryState _state = SummaryState.initial;
   String _summary = '';
   String _errorMessage = '';
+  bool _isGeneratingQuiz = false;
 
   late final FirestoreService _firestoreService;
   late final AIService _aiService;
@@ -195,6 +197,39 @@ class SummaryScreenState extends State<SummaryScreen> {
     }
   }
 
+  Future<void> _generateQuiz() async {
+    setState(() {
+      _isGeneratingQuiz = true;
+    });
+
+    try {
+      final summary = Summary(id: '', content: _summary, timestamp: Timestamp.now());
+      final quiz = await _aiService.generateQuizFromSummary(summary);
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => QuizScreen(quiz: quiz)),
+        );
+      }
+    } catch (e, s) {
+      developer.log(
+        'Error generating quiz',
+        name: 'my_app.summary',
+        error: e,
+        stackTrace: s,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error generating quiz.')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isGeneratingQuiz = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -207,7 +242,7 @@ class SummaryScreenState extends State<SummaryScreen> {
             padding: const EdgeInsets.all(16.0),
             child: _buildBody(),
           ),
-          if (_state == SummaryState.loading)
+          if (_state == SummaryState.loading || _isGeneratingQuiz)
             Container(
               color: Colors.black.withAlpha(128),
               child: const Center(
@@ -359,6 +394,11 @@ class SummaryScreenState extends State<SummaryScreen> {
               icon: const Icon(Icons.save_alt),
               label: const Text('Save'),
               onPressed: _saveToLibrary,
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.quiz),
+              label: const Text('Generate Quiz'),
+              onPressed: _generateQuiz,
             ),
           ],
         ),

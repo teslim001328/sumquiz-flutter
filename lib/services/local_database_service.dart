@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/local_summary.dart';
 import '../models/local_quiz.dart';
 import '../models/local_quiz_question.dart';
@@ -11,12 +10,12 @@ import '../models/content_folder.dart';
 import '../models/spaced_repetition.dart';
 
 class LocalDatabaseService {
-  static const String _summariesBox = 'summaries';
-  static const String _quizzesBox = 'quizzes';
-  static const String _flashcardSetsBox = 'flashcardSets';
-  static const String _foldersBox = 'folders';
-  static const String _contentFoldersBox = 'contentFolders';
-  static const String _spacedRepetitionBox = 'spacedRepetition';
+  static const String _summariesBoxName = 'summaries';
+  static const String _quizzesBoxName = 'quizzes';
+  static const String _flashcardSetsBoxName = 'flashcardSets';
+  static const String _foldersBoxName = 'folders';
+  static const String _contentFoldersBoxName = 'contentFolders';
+  static const String _spacedRepetitionBoxName = 'spacedRepetition';
 
   late Box<LocalSummary> _summariesBox;
   late Box<LocalQuiz> _quizzesBox;
@@ -45,12 +44,12 @@ class LocalDatabaseService {
       Hive.registerAdapter(SpacedRepetitionItemAdapter());
       
       // Open boxes
-      _summariesBox = await Hive.openBox<LocalSummary>(_summariesBox);
-      _quizzesBox = await Hive.openBox<LocalQuiz>(_quizzesBox);
-      _flashcardSetsBox = await Hive.openBox<LocalFlashcardSet>(_flashcardSetsBox);
-      _foldersBox = await Hive.openBox<Folder>(_foldersBox);
-      _contentFoldersBox = await Hive.openBox<ContentFolder>(_contentFoldersBox);
-      _spacedRepetitionBox = await Hive.openBox<SpacedRepetitionItem>(_spacedRepetitionBox);
+      _summariesBox = await Hive.openBox<LocalSummary>(_summariesBoxName);
+      _quizzesBox = await Hive.openBox<LocalQuiz>(_quizzesBoxName);
+      _flashcardSetsBox = await Hive.openBox<LocalFlashcardSet>(_flashcardSetsBoxName);
+      _foldersBox = await Hive.openBox<Folder>(_foldersBoxName);
+      _contentFoldersBox = await Hive.openBox<ContentFolder>(_contentFoldersBoxName);
+      _spacedRepetitionBox = await Hive.openBox<SpacedRepetitionItem>(_spacedRepetitionBoxName);
     } catch (e) {
       debugPrint('Error initializing local database: $e');
       rethrow;

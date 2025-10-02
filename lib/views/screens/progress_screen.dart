@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
@@ -7,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/spaced_repetition_service.dart';
-import '../widgets/upgrade_modal.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
