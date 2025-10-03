@@ -4,16 +4,16 @@
 
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import '../models/summary_model.dart';
-import '../models/quiz_model.dart';
-import '../models/flashcard_model.dart';
+import '../models/local_summary.dart';
+import '../models/local_quiz.dart';
+import '../models/local_flashcard_set.dart';
 
 class WordExportService {
   static final WordExportService _instance = WordExportService._internal();
   factory WordExportService() => _instance;
   WordExportService._internal();
 
-  Future<String> exportSummary(Summary summary) async {
+  Future<String> exportSummary(LocalSummary summary) async {
     // Create RTF content
     final rtfContent = '''
 {\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat
@@ -36,7 +36,7 @@ class WordExportService {
     return filePath;
   }
 
-  Future<String> exportQuiz(Quiz quiz) async {
+  Future<String> exportQuiz(LocalQuiz quiz) async {
     // Create RTF content
     final buffer = StringBuffer();
     buffer.writeln('{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat');
@@ -73,7 +73,7 @@ class WordExportService {
     return filePath;
   }
 
-  Future<String> exportFlashcardSet(FlashcardSet flashcardSet) async {
+  Future<String> exportFlashcardSet(LocalFlashcardSet flashcardSet) async {
     // Create RTF content
     final buffer = StringBuffer();
     buffer.writeln('{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat');

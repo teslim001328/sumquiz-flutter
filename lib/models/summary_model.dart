@@ -5,7 +5,7 @@ class Summary {
   final String content;
   final Timestamp timestamp;
 
-  Summary({required this.id, required this.content, required this.timestamp});
+  Summary({required this.id, required this.content, required this.timestamp, required String userId});
 
   factory Summary.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;

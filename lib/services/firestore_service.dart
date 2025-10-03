@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' hide Summary;
 import 'package:myapp/models/summary_model.dart';
 import 'package:myapp/models/quiz_model.dart';
-import 'package:myapp/models/flashcard_model.dart';
+import 'package:myapp/models/flashcard_set.dart';
 import 'package:myapp/models/user_model.dart';
 import 'package:myapp/models/quiz_question.dart';
 import 'package:myapp/models/flashcard.dart';
@@ -82,7 +83,7 @@ class FirestoreService {
       await _localDb.updateSummarySyncStatus(summary.id, true);
     } catch (e) {
       // If offline, it will be synced later
-      print('Error saving summary to Firestore: $e');
+      debugPrint('Error saving summary to Firestore: $e');
     }
   }
 
@@ -113,7 +114,7 @@ class FirestoreService {
       await _localDb.updateSummarySyncStatus(summaryId, true);
     } catch (e) {
       // If offline, it will be synced later
-      print('Error updating summary in Firestore: $e');
+      debugPrint('Error updating summary in Firestore: $e');
     }
   }
 
@@ -158,7 +159,7 @@ class FirestoreService {
       await _localDb.updateQuizSyncStatus(quiz.id, true);
     } catch (e) {
       // If offline, it will be synced later
-      print('Error saving quiz to Firestore: $e');
+      debugPrint('Error saving quiz to Firestore: $e');
     }
   }
 
@@ -197,7 +198,7 @@ class FirestoreService {
       await _localDb.updateQuizSyncStatus(quizId, true);
     } catch (e) {
       // If offline, it will be synced later
-      print('Error updating quiz in Firestore: $e');
+      debugPrint('Error updating quiz in Firestore: $e');
     }
   }
 
@@ -242,7 +243,7 @@ class FirestoreService {
       await _localDb.updateFlashcardSetSyncStatus(flashcardSet.id, true);
     } catch (e) {
       // If offline, it will be synced later
-      print('Error saving flashcard set to Firestore: $e');
+      debugPrint('Error saving flashcard set to Firestore: $e');
     }
   }
 
@@ -280,7 +281,7 @@ class FirestoreService {
       await _localDb.updateFlashcardSetSyncStatus(flashcardSetId, true);
     } catch (e) {
       // If offline, it will be synced later
-      print('Error updating flashcard set in Firestore: $e');
+      debugPrint('Error updating flashcard set in Firestore: $e');
     }
   }
 }

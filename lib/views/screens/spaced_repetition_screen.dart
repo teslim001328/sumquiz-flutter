@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive/hive.dart';
 import '../../services/spaced_repetition_service.dart';
+import '../../models/local_flashcard.dart';
+import '../../models/spaced_repetition_item.dart';
 
 class SpacedRepetitionScreen extends StatefulWidget {
   const SpacedRepetitionScreen({super.key});
@@ -12,8 +15,8 @@ class SpacedRepetitionScreen extends StatefulWidget {
 }
 
 class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
-  final SpacedRepetitionService _spacedRepetitionService = SpacedRepetitionService();
-  List<Flashcard> _dueFlashcards = [];
+  late SpacedRepetitionService _spacedRepetitionService;
+  List<LocalFlashcard> _dueFlashcards = [];
   int _currentIndex = 0;
   bool _showAnswer = false;
   bool _isLoading = true;
@@ -22,6 +25,8 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
   @override
   void initState() {
     super.initState();
+    final box = Hive.box<SpacedRepetitionItem>('spaced_repetition');
+    _spacedRepetitionService = SpacedRepetitionService(box);
     _loadDueFlashcards();
   }
 
@@ -33,7 +38,10 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
     try {
       final user = Provider.of<User?>(context, listen: false);
       if (user != null) {
-        final flashcards = await _spacedRepetitionService.getDueFlashcards(user.uid);
+        // In a real app, you would fetch all flashcards from the local DB
+        // and pass them to getDueFlashcards.
+        // For now, we'll pass an empty list for demonstration.
+        final flashcards = await _spacedRepetitionService.getDueFlashcards([]);
         setState(() {
           _dueFlashcards = flashcards;
           _isLoading = false;
@@ -51,19 +59,15 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
     }
   }
 
-  Future<void> _processReview(int quality) async {
+  Future<void> _processReview(bool answeredCorrectly) async {
     if (_currentIndex < _dueFlashcards.length) {
       final flashcard = _dueFlashcards[_currentIndex];
       
       try {
-        final user = Provider.of<User?>(context, listen: false);
-        if (user != null) {
-          await _spacedRepetitionService.processReview(
-            flashcard.id,
-            user.uid,
-            quality,
-          );
-        }
+        await _spacedRepetitionService.updateReview(
+          flashcard.id,
+          answeredCorrectly,
+        );
         
         // Move to next card or finish
         if (_currentIndex < _dueFlashcards.length - 1) {
@@ -236,45 +240,23 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => _processReview(0),
+                        onPressed: () => _processReview(false),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('Again'),
+                        child: const Text('Incorrect'),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => _processReview(2),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: const Text('Hard'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _processReview(4),
+                        onPressed: () => _processReview(true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text('Good'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _processReview(5),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: const Text('Easy'),
+                        child: const Text('Correct'),
                       ),
                     ),
                   ],

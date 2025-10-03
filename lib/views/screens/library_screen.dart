@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:developer' as developer;
 
 import '../../models/library_item.dart';
 import '../../models/user_model.dart';
@@ -19,7 +20,7 @@ import '../widgets/upgrade_modal.dart';
 import '../../models/editable_content.dart';
 import '../../models/summary_model.dart';
 import '../../models/quiz_model.dart';
-import '../../models/flashcard_model.dart';
+import '../../models/flashcard_set.dart';
 import '../screens/edit_content_screen.dart';
 import '../../models/folder.dart';
 
@@ -81,8 +82,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
         setState(() {
           _folders = folders;
         });
-      } catch (e) {
-        print('Error loading folders: $e');
+      } catch (e, s) {
+        developer.log('Error loading folders: $e', name: 'my_app.library', error: e, stackTrace: s);
       }
     }
   }
@@ -687,6 +688,7 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     }
 
     if (editableContent != null) {
+      if (!mounted) return;
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -724,28 +726,13 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
       try {
         switch (type) {
           case 'summaries':
-            await _firestoreService.db
-                .collection('users')
-                .doc(userId)
-                .collection('summaries')
-                .doc(item.id)
-                .delete();
+            await _localDb.deleteSummary(item.id);
             break;
           case 'quizzes':
-            await _firestoreService.db
-                .collection('users')
-                .doc(userId)
-                .collection('quizzes')
-                .doc(item.id)
-                .delete();
+            await _localDb.deleteQuiz(item.id);
             break;
           case 'flashcards':
-            await _firestoreService.db
-                .collection('users')
-                .doc(userId)
-                .collection('flashcard_sets')
-                .doc(item.id)
-                .delete();
+            await _localDb.deleteFlashcardSet(item.id);
             break;
         }
         
@@ -768,38 +755,20 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
       
       switch (type) {
         case 'summaries':
-          final summaryDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('summaries')
-              .doc(item.id)
-              .get();
-          if (summaryDoc.exists) {
-            final summary = Summary.fromFirestore(summaryDoc);
+          final summary = await _localDb.getSummary(item.id);
+          if (summary != null) {
             filePath = await PdfExportService().exportSummary(summary);
           }
           break;
         case 'quizzes':
-          final quizDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('quizzes')
-              .doc(item.id)
-              .get();
-          if (quizDoc.exists) {
-            final quiz = Quiz.fromFirestore(quizDoc);
+          final quiz = await _localDb.getQuiz(item.id);
+          if (quiz != null) {
             filePath = await PdfExportService().exportQuiz(quiz);
           }
           break;
         case 'flashcards':
-          final flashcardDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('flashcard_sets')
-              .doc(item.id)
-              .get();
-          if (flashcardDoc.exists) {
-            final flashcardSet = FlashcardSet.fromFirestore(flashcardDoc);
+          final flashcardSet = await _localDb.getFlashcardSet(item.id);
+          if (flashcardSet != null) {
             filePath = await PdfExportService().exportFlashcardSet(flashcardSet);
           }
           break;
@@ -825,38 +794,20 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
       
       switch (type) {
         case 'summaries':
-          final summaryDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('summaries')
-              .doc(item.id)
-              .get();
-          if (summaryDoc.exists) {
-            final summary = Summary.fromFirestore(summaryDoc);
+          final summary = await _localDb.getSummary(item.id);
+          if (summary != null) {
             filePath = await WordExportService().exportSummary(summary);
           }
           break;
         case 'quizzes':
-          final quizDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('quizzes')
-              .doc(item.id)
-              .get();
-          if (quizDoc.exists) {
-            final quiz = Quiz.fromFirestore(quizDoc);
+          final quiz = await _localDb.getQuiz(item.id);
+          if (quiz != null) {
             filePath = await WordExportService().exportQuiz(quiz);
           }
           break;
         case 'flashcards':
-          final flashcardDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('flashcard_sets')
-              .doc(item.id)
-              .get();
-          if (flashcardDoc.exists) {
-            final flashcardSet = FlashcardSet.fromFirestore(flashcardDoc);
+          final flashcardSet = await _localDb.getFlashcardSet(item.id);
+          if (flashcardSet != null) {
             filePath = await WordExportService().exportFlashcardSet(flashcardSet);
           }
           break;
@@ -880,38 +831,20 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     try {
       switch (type) {
         case 'summaries':
-          final summaryDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('summaries')
-              .doc(item.id)
-              .get();
-          if (summaryDoc.exists) {
-            final summary = Summary.fromFirestore(summaryDoc);
+          final summary = await _localDb.getSummary(item.id);
+          if (summary != null) {
             await SharingService().shareSummary(summary);
           }
           break;
         case 'quizzes':
-          final quizDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('quizzes')
-              .doc(item.id)
-              .get();
-          if (quizDoc.exists) {
-            final quiz = Quiz.fromFirestore(quizDoc);
+          final quiz = await _localDb.getQuiz(item.id);
+          if (quiz != null) {
             await SharingService().shareQuiz(quiz);
           }
           break;
         case 'flashcards':
-          final flashcardDoc = await _firestoreService.db
-              .collection('users')
-              .doc(userId)
-              .collection('flashcard_sets')
-              .doc(item.id)
-              .get();
-          if (flashcardDoc.exists) {
-            final flashcardSet = FlashcardSet.fromFirestore(flashcardDoc);
+          final flashcardSet = await _localDb.getFlashcardSet(item.id);
+          if (flashcardSet != null) {
             await SharingService().shareFlashcardSet(flashcardSet);
           }
           break;

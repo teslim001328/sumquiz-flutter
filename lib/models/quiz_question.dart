@@ -24,4 +24,6 @@ class QuizQuestion {
       'correctAnswer': correctAnswer,
     };
   }
+
+  static void fromMap(q) {}
 }

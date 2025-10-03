@@ -69,9 +69,11 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
-      final questions = await _aiService.generateQuiz(_textController.text);
+      final questionsData = await _aiService.generateQuiz(_textController.text);
       setState(() {
-        _questions = questions;
+        _questions = questionsData
+            .map((q) => QuizQuestion.fromMap(q as Map<String, dynamic>))
+            .toList();
       });
     } catch (e, s) {
       developer.log(

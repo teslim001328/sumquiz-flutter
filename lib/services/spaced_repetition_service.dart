@@ -46,17 +46,21 @@ class SpacedRepetitionService {
     if (item != null) {
       final now = DateTime.now();
       int newRepetitionCount;
+      int newCorrectStreak;
 
       if (answeredCorrectly) {
         newRepetitionCount = item.repetitionCount + 1;
+        newCorrectStreak = item.correctStreak + 1;
       } else {
         newRepetitionCount = 0; // Reset progress
+        newCorrectStreak = 0;
       }
 
       final updatedItem = SpacedRepetitionItem(
         contentId: item.contentId,
         contentType: item.contentType,
         repetitionCount: newRepetitionCount,
+        correctStreak: newCorrectStreak,
         lastReviewed: now,
         createdAt: item.createdAt,
         updatedAt: now,
@@ -70,5 +74,41 @@ class SpacedRepetitionService {
     if (repetitionCount == 0) return 1;
     if (repetitionCount == 1) return 3;
     return (pow(2, repetitionCount) * 2).toInt();
+  }
+
+  Future<Map<String, dynamic>> getStatistics(String userId) async {
+    final allItems = _srsBox.values.toList();
+
+    if (allItems.isEmpty) {
+      return {
+        'totalReviews': 0,
+        'averageCorrectness': 0.0,
+        'masteryLevel': 0.0,
+        'reviewsOverTime': [],
+      };
+    }
+
+    final totalReviews = allItems.length;
+    final correctReviews = allItems.where((item) => item.correctStreak > 0).length;
+    final averageCorrectness = totalReviews > 0 ? correctReviews / totalReviews : 0.0;
+    final totalCorrectStreaks = allItems.fold<int>(0, (prev, item) => prev + item.correctStreak);
+    final masteryLevel = totalReviews > 0 ? totalCorrectStreaks / totalReviews : 0.0;
+
+    // Group reviews by day
+    final reviewsOverTime = <DateTime, int>{};
+    for (final item in allItems) {
+      final date = DateTime(item.lastReviewed.year, item.lastReviewed.month, item.lastReviewed.day);
+      reviewsOverTime[date] = (reviewsOverTime[date] ?? 0) + 1;
+    }
+
+    final sortedReviews = reviewsOverTime.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    return {
+      'totalReviews': totalReviews,
+      'averageCorrectness': averageCorrectness,
+      'masteryLevel': masteryLevel,
+      'reviewsOverTime': sortedReviews,
+    };
   }
 }

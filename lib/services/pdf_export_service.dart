@@ -8,7 +8,7 @@ import '../models/local_quiz.dart';
 import '../models/local_flashcard_set.dart';
 
 class PdfExportService {
-  Future<void> exportSummary(LocalSummary summary) async {
+  Future<String> exportSummary(LocalSummary summary) async {
     final PdfDocument document = PdfDocument();
     final PdfPage page = document.pages.add();
 
@@ -31,10 +31,10 @@ class PdfExportService {
     final bytes = await document.save();
     document.dispose();
 
-    await _saveAndLaunchFile(bytes, 'summary_${summary.id}.pdf');
+    return await _saveAndLaunchFile(bytes, 'summary_${summary.id}.pdf');
   }
 
-  Future<void> exportQuiz(LocalQuiz quiz) async {
+  Future<String> exportQuiz(LocalQuiz quiz) async {
     final PdfDocument document = PdfDocument();
     
     for (var i = 0; i < quiz.questions.length; i++) {
@@ -76,10 +76,10 @@ class PdfExportService {
     final bytes = await document.save();
     document.dispose();
 
-    await _saveAndLaunchFile(bytes, 'quiz_${quiz.id}.pdf');
+    return await _saveAndLaunchFile(bytes, 'quiz_${quiz.id}.pdf');
   }
 
-  Future<void> exportFlashcardSet(LocalFlashcardSet flashcardSet) async {
+  Future<String> exportFlashcardSet(LocalFlashcardSet flashcardSet) async {
     final PdfDocument document = PdfDocument();
 
     for (final flashcard in flashcardSet.flashcards) {
@@ -115,15 +115,14 @@ class PdfExportService {
     final bytes = await document.save();
     document.dispose();
 
-    await _saveAndLaunchFile(bytes, 'flashcards_${flashcardSet.id}.pdf');
+    return await _saveAndLaunchFile(bytes, 'flashcards_${flashcardSet.id}.pdf');
   }
 
-  Future<void> _saveAndLaunchFile(List<int> bytes, String fileName) async {
+  Future<String> _saveAndLaunchFile(List<int> bytes, String fileName) async {
     final directory = await getApplicationDocumentsDirectory();
     final path = directory.path;
     final file = File('$path/$fileName');
     await file.writeAsBytes(bytes, flush: true);
-    // Note: Launching the file will require a platform-specific implementation
-    // using a package like `open_file` or `url_launcher`.
+    return file.path;
   }
 }

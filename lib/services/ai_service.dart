@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/foundation.dart' hide Summary;
-import '../../models/flashcard_model.dart';
-import '../../models/quiz_model.dart';
-import '../../models/summary_model.dart';
+import 'package:myapp/models/flashcard.dart';
+import 'package:myapp/models/quiz_model.dart';
+import 'package:myapp/models/summary_model.dart';
 
 class AIService {
   final GenerativeModel _model;

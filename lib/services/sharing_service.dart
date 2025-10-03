@@ -11,7 +11,7 @@ class SharingService {
 
   Future<void> shareSummary(LocalSummary summary) async {
     try {
-      final pdfPath = await _generatePdf(summary, _pdfExportService.exportSummary);
+      final pdfPath = await _pdfExportService.exportSummary(summary);
       await Share.shareXFiles([XFile(pdfPath)], text: 'Here is the summary you requested!');
     } catch (e, s) {
       developer.log(
@@ -25,7 +25,7 @@ class SharingService {
 
   Future<void> shareQuiz(LocalQuiz quiz) async {
     try {
-      final pdfPath = await _generatePdf(quiz, _pdfExportService.exportQuiz);
+      final pdfPath = await _pdfExportService.exportQuiz(quiz);
       await Share.shareXFiles([XFile(pdfPath)], text: 'Here is the quiz you requested!');
     } catch (e, s) {
       developer.log(
@@ -39,7 +39,7 @@ class SharingService {
 
   Future<void> shareFlashcardSet(LocalFlashcardSet flashcardSet) async {
     try {
-      final pdfPath = await _generatePdf(flashcardSet, _pdfExportService.exportFlashcardSet);
+      final pdfPath = await _pdfExportService.exportFlashcardSet(flashcardSet);
       await Share.shareXFiles([XFile(pdfPath)], text: 'Here are the flashcards you requested!');
     } catch (e, s) {
       developer.log(
@@ -62,13 +62,5 @@ class SharingService {
         stackTrace: s,
       );
     }
-  }
-
-  Future<String> _generatePdf<T>(T data, Future<void> Function(T) exportFunction) async {
-    // This is a simplified stand-in for the actual PDF generation logic
-    // that would be handled by the PdfExportService.
-    await exportFunction(data);
-    // In a real implementation, this would return the path to the generated PDF.
-    return 'path/to/your/pdf.pdf';
   }
 }

@@ -11,8 +11,9 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
-import '../../models/flashcard_model.dart';
 import '../../models/flashcard.dart';
+import '../../models/flashcard_set.dart';
+import '../../models/summary_model.dart';
 
 class FlashcardsScreen extends StatefulWidget {
   const FlashcardsScreen({super.key});
@@ -54,7 +55,12 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     });
 
     try {
-      final flashcards = await _aiService.generateFlashcards(_textController.text);
+      final summary = Summary(
+        id: '', // Not needed for generation
+        content: _textController.text,
+        timestamp: Timestamp.now(),
+      );
+      final flashcards = await _aiService.generateFlashcards(summary);
       setState(() {
         _flashcards = flashcards;
       });
@@ -123,6 +129,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         FlashcardSet(
           id: '',
           title: _titleController.text,
+          summaryId: '', // Not linked to a summary in this context
           flashcards: _flashcards,
           timestamp: Timestamp.now(),
         ),

@@ -7,9 +7,9 @@ import '../models/local_quiz.dart';
 import '../models/local_flashcard_set.dart';
 import '../models/summary_model.dart';
 import '../models/quiz_model.dart';
-import '../models/flashcard_model.dart';
-import '../models/quiz_question.dart';
 import '../models/flashcard.dart';
+import '../models/flashcard_set.dart';
+import '../models/quiz_question.dart';
 import '../models/local_quiz_question.dart';
 import '../models/local_flashcard.dart';
 import 'dart:developer' as developer;
@@ -194,6 +194,7 @@ class SyncService {
         final flashcardSet = FlashcardSet(
           id: localFlashcardSet.id,
           title: localFlashcardSet.title,
+          summaryId: '', // This needs to be fetched from the summary
           flashcards: localFlashcardSet.flashcards
               .map((f) => Flashcard(
                     question: f.question,

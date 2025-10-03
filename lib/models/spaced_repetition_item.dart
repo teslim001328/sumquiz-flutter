@@ -22,6 +22,9 @@ class SpacedRepetitionItem extends HiveObject {
   @HiveField(5)
   late DateTime updatedAt;
 
+  @HiveField(6)
+  late int correctStreak;
+
   SpacedRepetitionItem({
     required this.contentId,
     required this.contentType,
@@ -29,5 +32,6 @@ class SpacedRepetitionItem extends HiveObject {
     required this.lastReviewed,
     required this.createdAt,
     required this.updatedAt,
+    this.correctStreak = 0,
   });
 }

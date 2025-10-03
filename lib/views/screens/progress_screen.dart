@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:hive/hive.dart';
+import 'dart:developer' as developer;
 
 import '../../models/user_model.dart';
-import '../../services/firestore_service.dart';
 import '../../services/spaced_repetition_service.dart';
+import '../../models/spaced_repetition_item.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -15,8 +17,7 @@ class ProgressScreen extends StatefulWidget {
 }
 
 class ProgressScreenState extends State<ProgressScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  final SpacedRepetitionService _spacedRepetitionService = SpacedRepetitionService();
+  late SpacedRepetitionService _spacedRepetitionService;
   DateTime _selectedDate = DateTime.now();
   Map<String, dynamic> _dailyStats = {};
   List<Map<String, dynamic>> _weeklyStats = [];
@@ -25,6 +26,8 @@ class ProgressScreenState extends State<ProgressScreen> {
   @override
   void initState() {
     super.initState();
+    final box = Hive.box<SpacedRepetitionItem>('spaced_repetition');
+    _spacedRepetitionService = SpacedRepetitionService(box);
     _loadStats();
   }
 
@@ -59,13 +62,13 @@ class ProgressScreenState extends State<ProgressScreen> {
     try {
       final user = Provider.of<UserModel?>(context, listen: false);
       if (user != null) {
-        final stats = await _spacedRepetitionService.getStatistics(user.id);
+        final stats = await _spacedRepetitionService.getStatistics(user.uid);
         setState(() {
           _spacedRepetitionStats = stats;
         });
       }
-    } catch (e) {
-      print('Error loading spaced repetition stats: $e');
+    } catch (e, s) {
+      developer.log('Error loading spaced repetition stats: $e', name: 'my_app.progress', error: e, stackTrace: s);
     }
   }
 
@@ -276,10 +279,10 @@ class ProgressScreenState extends State<ProgressScreen> {
                 BarChartData(
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: Colors.grey[800],
+                      getTooltipColor: (group) => Colors.grey[800]!,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         return BarTooltipItem(
-                          '${_weeklyStats[group.x]['count']} items',
+                          '${_weeklyStats[group.x.toInt()]['count']} items',
                           const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -334,7 +337,6 @@ class ProgressScreenState extends State<ProgressScreen> {
                           color: Theme.of(context).colorScheme.primary,
                           width: 16,
                           borderRadius: BorderRadius.zero,
-                          rodStackItems: [],
                         ),
                       ],
                     );
