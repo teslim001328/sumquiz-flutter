@@ -11,6 +11,7 @@ import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
 import '../../models/quiz_question.dart';
 import '../../models/quiz_model.dart';
+import '../../models/summary_model.dart';
 
 class QuizScreen extends StatefulWidget {
   final Quiz? quiz;
@@ -69,11 +70,16 @@ class _QuizScreenState extends State<QuizScreen> {
     });
 
     try {
-      final questionsData = await _aiService.generateQuiz(_textController.text);
+      final summary = Summary(
+        id: '',
+        userId: _auth.currentUser!.uid,
+        content: _textController.text,
+        timestamp: Timestamp.now(),
+      );
+      final quiz = await _aiService.generateQuizFromSummary(summary);
       setState(() {
-        _questions = questionsData
-            .map((q) => QuizQuestion.fromMap(q as Map<String, dynamic>))
-            .toList();
+        _questions = quiz.questions;
+        _titleController.text = quiz.title;
       });
     } catch (e, s) {
       developer.log(

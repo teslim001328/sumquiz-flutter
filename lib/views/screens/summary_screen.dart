@@ -35,6 +35,7 @@ class SummaryScreenState extends State<SummaryScreen> {
 
   late final FirestoreService _firestoreService;
   late final AIService _aiService;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -167,13 +168,14 @@ class SummaryScreenState extends State<SummaryScreen> {
   }
 
   void _saveToLibrary() async {
-    final user = Provider.of<User?>(context, listen: false);
+    final user = _auth.currentUser;
     if (user != null) {
       try {
         await _firestoreService.addSummary(
           user.uid,
           Summary(
             id: '', // Firestore will generate this
+            userId: user.uid,
             content: _summary,
             timestamp: Timestamp.now(),
           ),
@@ -198,12 +200,20 @@ class SummaryScreenState extends State<SummaryScreen> {
   }
 
   Future<void> _generateQuiz() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
     setState(() {
       _isGeneratingQuiz = true;
     });
 
     try {
-      final summary = Summary(id: '', content: _summary, timestamp: Timestamp.now());
+      final summary = Summary(
+        id: '',
+        userId: user.uid,
+        content: _summary,
+        timestamp: Timestamp.now(),
+      );
       final quiz = await _aiService.generateQuizFromSummary(summary);
       if (mounted) {
         Navigator.push(

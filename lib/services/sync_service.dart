@@ -48,6 +48,7 @@ class SyncService {
       try {
         final summary = Summary(
           id: localSummary.id,
+          userId: userId,
           content: localSummary.content,
           timestamp: Timestamp.fromDate(localSummary.timestamp),
         );

@@ -14,6 +14,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLogin = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -23,36 +24,61 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      try {
-        if (_isLogin) {
-          await authService.signInWithEmailAndPassword(
-            _emailController.text,
-            _passwordController.text,
-          );
-        } else {
-          await authService.createUserWithEmailAndPassword(
-            _emailController.text,
-            _passwordController.text,
-          );
-        }
-      } catch (e) {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      if (_isLogin) {
+        await authService.signInWithEmailAndPassword(
+          _emailController.text,
+          _passwordController.text,
+        );
+      } else {
+        await authService.createUserWithEmailAndPassword(
+          _emailController.text,
+          _passwordController.text,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.toString())),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
 
   void _signInWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.signInWithGoogle();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to sign in with Google: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sign in with Google: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -94,8 +120,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _submit,
-                    child: Text(_isLogin ? 'Login' : 'Sign Up'),
+                    onPressed: _isLoading ? null : _submit,
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
+                        : Text(_isLogin ? 'Login' : 'Sign Up'),
                   ),
                   TextButton(
                     onPressed: () {
@@ -109,8 +139,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _signInWithGoogle,
-                    child: const Text('Sign in with Google'),
+                    onPressed: _isLoading ? null : _signInWithGoogle,
+                    child: _isLoading
+                        ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
+                        : const Text('Sign in with Google'),
                   ),
                 ],
               ),

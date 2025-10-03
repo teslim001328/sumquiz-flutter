@@ -57,6 +57,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     try {
       final summary = Summary(
         id: '', // Not needed for generation
+        userId: _auth.currentUser!.uid,
         content: _textController.text,
         timestamp: Timestamp.now(),
       );
