@@ -312,13 +312,13 @@ class ProgressScreenState extends State<ProgressScreen> {
                         },
                       ),
                     ),
-                    leftTitles: AxisTitles(
+                    leftTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
-                    topTitles: AxisTitles(
+                    topTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
-                    rightTitles: AxisTitles(
+                    rightTitles: const AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
@@ -340,7 +340,7 @@ class ProgressScreenState extends State<ProgressScreen> {
                       ],
                     );
                   }).toList(),
-                  gridData: FlGridData(show: false),
+                  gridData: const FlGridData(show: false),
                 ),
               ),
             ),

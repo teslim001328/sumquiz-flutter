@@ -13,7 +13,7 @@ class Quiz {
     required this.title,
     required this.questions,
     Timestamp? timestamp,
-  })  : id = id ?? Uuid().v4(),
+  })  : id = id ?? const Uuid().v4(),
         timestamp = timestamp ?? Timestamp.now();
 
   factory Quiz.fromFirestore(DocumentSnapshot doc) {

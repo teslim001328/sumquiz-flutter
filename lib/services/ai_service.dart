@@ -1,27 +1,27 @@
 import 'dart:convert';
-import 'package:firebase_ai/firebase_ai.dart' as vertex;
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/foundation.dart' hide Summary;
 import 'package:myapp/models/flashcard.dart';
 import 'package:myapp/models/quiz_model.dart';
 import 'package:myapp/models/summary_model.dart';
 
 class AIService {
-  final vertex.GenerativeModel _model;
+  final GenerativeModel _model;
 
   AIService()
-      : _model = vertex.FirebaseVertexAI.instance
-            .generativeModel(model: 'gemini-1.5-pro');
+      : _model = FirebaseAI.instance
+            .generativeModel(model: 'gemini-2.5-flash');
 
   Future<List<Flashcard>> generateFlashcards(Summary summary) async {
     try {
-      final prompt =
+      const prompt =
           'Generate a list of flashcards based on the following summary. '
           'Provide the output in JSON format with the following structure: '
-          '[{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]';
+          '[{\"question\": \"...\", \"answer\": \"...\"}, {\"question\": \"...\", \"answer\": \"...\"}]';
 
       final response = await _model.generateContent([
-        vertex.Content.text(prompt),
-        vertex.Content.text('Summary: ${summary.content}'),
+        Content.text(prompt),
+        Content.text('Summary: ${summary.content}'),
       ]);
 
       if (response.text != null) {
@@ -30,29 +30,28 @@ class AIService {
             .replaceAll('```', '')
             .trim();
         final List<dynamic> jsonResponse = jsonDecode(jsonString);
-        final flashcards = jsonResponse
-            .map((json) => Flashcard.fromMap(json))
-            .toList();
+        final flashcards =
+            jsonResponse.map((json) => Flashcard.fromMap(json)).toList();
         return flashcards;
       } else {
         throw Exception('Failed to generate flashcards: No response from model.');
       }
     } catch (e) {
       debugPrint('Error generating flashcards: $e');
-      return Future.error('Error generating flashcards: $e');
+      rethrow;
     }
   }
 
   Future<Quiz> generateQuizFromSummary(Summary summary) async {
     try {
-      final prompt =
+      const prompt =
           'Generate a 10-question multiple-choice quiz based on the following summary. '
           'Provide the output in JSON format with the following structure: '
-          '{"title": "Quiz Title", "questions": [{"question": "...", "options": ["...", "...", "..."], "correctAnswer": "..."}]}';
+          '{\"title\": \"Quiz Title\", \"questions\": [{\"question\": \"...\", \"options\": [\"...\", \"...\", \"...\"], \"correctAnswer\": \"...\"}]}';
 
       final response = await _model.generateContent([
-        vertex.Content.text(prompt),
-        vertex.Content.text('Summary: ${summary.content}'),
+        Content.text(prompt),
+        Content.text('Summary: ${summary.content}'),
       ]);
 
       if (response.text != null) {
@@ -68,7 +67,7 @@ class AIService {
       }
     } catch (e) {
       debugPrint('Error generating quiz: $e');
-      return Future.error('Error generating quiz: $e');
+      rethrow;
     }
   }
 
@@ -77,30 +76,30 @@ class AIService {
       const prompt =
           'Provide a concise summary of the following content. Focus on the key points and main ideas.';
 
-      final content = <vertex.Part>[vertex.TextPart(prompt)];
+      final promptParts = <Part>[];
+      promptParts.add(TextPart(prompt));
 
       if (pdfBytes != null) {
-        content.add(vertex.DataPart('application/pdf', pdfBytes));
+        promptParts.add(DataPart('application/pdf', pdfBytes));
         if (text.isNotEmpty) {
-          content.add(vertex.TextPart('Also consider the following text: $text'));
+          promptParts.add(TextPart('The user also provided this text as context: $text'));
         }
       } else if (text.isNotEmpty) {
-        content.add(vertex.TextPart(text));
+        promptParts.add(TextPart(text));
       } else {
-        return 'Error: No content provided for summary.';
+        return 'Error: Please provide text or a PDF to summarize.';
       }
 
-      final response = await _model.generateContent([vertex.Content.multi(content)]);
+      final response = await _model.generateContent([Content.multi(promptParts)]);
 
       if (response.text != null && response.text!.isNotEmpty) {
         return response.text!;
       } else {
-        return 'Error generating summary: The model returned an empty response.';
+        return 'Error: Failed to generate summary. The model returned an empty response.';
       }
     } catch (e) {
-      final errorMessage = 'Error generating summary: $e';
-      debugPrint(errorMessage);
-      return errorMessage;
+      debugPrint('Error generating summary: $e');
+      return 'Error: An unexpected error occurred while generating the summary. See logs for details.';
     }
   }
 
