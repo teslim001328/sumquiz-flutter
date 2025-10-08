@@ -2,16 +2,19 @@ class Flashcard {
   final String question;
   final String answer;
 
-  Flashcard({required this.question, required this.answer});
+  Flashcard({
+    required this.question,
+    required this.answer,
+  });
 
-  factory Flashcard.fromJson(Map<String, dynamic> json) {
+  factory Flashcard.fromMap(Map<String, dynamic> map) {
     return Flashcard(
-      question: json['question'] as String,
-      answer: json['answer'] as String,
+      question: map['question'] ?? '',
+      answer: map['answer'] ?? '',
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
       'question': question,
       'answer': answer,

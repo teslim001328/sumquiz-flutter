@@ -1,13 +1,13 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
   final String uid;
-  final String name;
-  final String email;
-  final String subscriptionStatus;
-  final Map<String, dynamic> dailyUsage;
-  final Timestamp lastReset;
-  final bool isPro;
+  String name;
+  String email;
+  String subscriptionStatus;
+  Map<String, int> dailyUsage;
+  Timestamp lastReset;
 
   UserModel({
     required this.uid,
@@ -16,7 +16,6 @@ class UserModel {
     required this.subscriptionStatus,
     required this.dailyUsage,
     required this.lastReset,
-    this.isPro = false,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -25,22 +24,19 @@ class UserModel {
       uid: doc.id,
       name: data['name'] ?? '',
       email: data['email'] ?? '',
-      subscriptionStatus: data['subscription_status'] ?? 'Free',
-      dailyUsage: Map<String, dynamic>.from(data['daily_usage'] ?? {})
-          .map((key, value) => MapEntry(key, value as int)),
-      lastReset: data['last_reset'] ?? Timestamp.now(),
-      isPro: data['isPro'] ?? false,
+      subscriptionStatus: data['subscriptionStatus'] ?? 'Free',
+      dailyUsage: Map<String, int>.from(data['dailyUsage'] ?? {}),
+      lastReset: data['lastReset'] ?? Timestamp.now(),
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
       'name': name,
       'email': email,
-      'subscription_status': subscriptionStatus,
-      'daily_usage': dailyUsage,
-      'last_reset': lastReset,
-      'isPro': isPro,
+      'subscriptionStatus': subscriptionStatus,
+      'dailyUsage': dailyUsage,
+      'lastReset': lastReset,
     };
   }
 }

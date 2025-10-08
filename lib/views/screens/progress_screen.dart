@@ -279,7 +279,6 @@ class ProgressScreenState extends State<ProgressScreen> {
                 BarChartData(
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (group) => Colors.grey[800]!,
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         return BarTooltipItem(
                           '${_weeklyStats[group.x.toInt()]['count']} items',

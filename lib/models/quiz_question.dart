@@ -9,21 +9,19 @@ class QuizQuestion {
     required this.correctAnswer,
   });
 
-  factory QuizQuestion.fromJson(Map<String, dynamic> json) {
+  factory QuizQuestion.fromMap(Map<String, dynamic> map) {
     return QuizQuestion(
-      question: json['question'] as String,
-      options: List<String>.from(json['options'] as List),
-      correctAnswer: json['correctAnswer'] as String,
+      question: map['question'] ?? '',
+      options: List<String>.from(map['options'] ?? []),
+      correctAnswer: map['correctAnswer'] ?? '',
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
       'question': question,
       'options': options,
       'correctAnswer': correctAnswer,
     };
   }
-
-  static void fromMap(q) {}
 }

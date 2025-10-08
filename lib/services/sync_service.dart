@@ -59,7 +59,7 @@ class SyncService {
             .doc(userId)
             .collection('summaries')
             .doc(localSummary.id)
-            .set(summary.toJson());
+            .set(summary.toFirestore());
 
         // Mark as synced locally
         await _localDb.updateSummarySyncStatus(localSummary.id, true);
@@ -128,7 +128,7 @@ class SyncService {
             .doc(userId)
             .collection('quizzes')
             .doc(localQuiz.id)
-            .set(quiz.toJson());
+            .set(quiz.toFirestore());
 
         // Mark as synced locally
         await _localDb.updateQuizSyncStatus(localQuiz.id, true);
@@ -195,7 +195,6 @@ class SyncService {
         final flashcardSet = FlashcardSet(
           id: localFlashcardSet.id,
           title: localFlashcardSet.title,
-          summaryId: '', // This needs to be fetched from the summary
           flashcards: localFlashcardSet.flashcards
               .map((f) => Flashcard(
                     question: f.question,
@@ -211,7 +210,7 @@ class SyncService {
             .doc(userId)
             .collection('flashcard_sets')
             .doc(localFlashcardSet.id)
-            .set(flashcardSet.toJson());
+            .set(flashcardSet.toFirestore());
 
         // Mark as synced locally
         await _localDb.updateFlashcardSetSyncStatus(localFlashcardSet.id, true);

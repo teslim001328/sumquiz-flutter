@@ -4,36 +4,32 @@ import 'package:myapp/models/flashcard.dart';
 class FlashcardSet {
   final String id;
   final String title;
-  final String summaryId;
   final List<Flashcard> flashcards;
   final Timestamp timestamp;
 
   FlashcardSet({
     required this.id,
     required this.title,
-    required this.summaryId,
     required this.flashcards,
     required this.timestamp,
   });
 
   factory FlashcardSet.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    Map data = doc.data() as Map<String, dynamic>;
     return FlashcardSet(
       id: doc.id,
-      title: data['title'],
-      summaryId: data['summaryId'],
-      flashcards: (data['flashcards'] as List)
-          .map((f) => Flashcard.fromJson(f))
+      title: data['title'] ?? '',
+      flashcards: (data['flashcards'] as List<dynamic>? ?? [])
+          .map((f) => Flashcard.fromMap(f))
           .toList(),
-      timestamp: data['timestamp'],
+      timestamp: data['timestamp'] ?? Timestamp.now(),
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
       'title': title,
-      'summaryId': summaryId,
-      'flashcards': flashcards.map((f) => f.toJson()).toList(),
+      'flashcards': flashcards.map((f) => f.toFirestore()).toList(),
       'timestamp': timestamp,
     };
   }

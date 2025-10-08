@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
@@ -27,7 +26,7 @@ class SummaryScreen extends StatefulWidget {
 class SummaryScreenState extends State<SummaryScreen> {
   final TextEditingController _textController = TextEditingController();
   String? _pdfFileName;
-  File? _pdfFile;
+  Uint8List? _pdfBytes;
   SummaryState _state = SummaryState.initial;
   String _summary = '';
   String _errorMessage = '';
@@ -49,11 +48,12 @@ class SummaryScreenState extends State<SummaryScreen> {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
+        withData: true,
       );
 
       if (result != null) {
         setState(() {
-          _pdfFile = File(result.files.single.path!);
+          _pdfBytes = result.files.single.bytes;
           _pdfFileName = result.files.single.name;
         });
       }
@@ -94,7 +94,7 @@ class SummaryScreenState extends State<SummaryScreen> {
     try {
       final summary = await _aiService.generateSummary(
         _textController.text,
-        pdfFile: _pdfFile,
+        pdfBytes: _pdfBytes,
       );
 
       if (summary.startsWith("Error:")) {
@@ -174,7 +174,7 @@ class SummaryScreenState extends State<SummaryScreen> {
         await _firestoreService.addSummary(
           user.uid,
           Summary(
-            id: '', // Firestore will generate this
+            id: '', 
             userId: user.uid,
             content: _summary,
             timestamp: Timestamp.now(),
@@ -302,7 +302,15 @@ class SummaryScreenState extends State<SummaryScreen> {
           ),
           onChanged: (text) => setState(() {}),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Text(
+            'Tip: Click the text box and press Ctrl+V or Cmd+V to paste.',
+            style: GoogleFonts.openSans(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ),
+        const SizedBox(height: 16),
         Center(
           child: ElevatedButton.icon(
             icon: const Icon(Icons.upload_file),
@@ -321,9 +329,8 @@ class SummaryScreenState extends State<SummaryScreen> {
                 label: Text(_pdfFileName!),
                 onDeleted: () {
                   setState(() {
-                    _pdfFile = null;
+                    _pdfBytes = null;
                     _pdfFileName = null;
-                    _textController.clear();
                   });
                 },
               ),

@@ -130,7 +130,6 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         FlashcardSet(
           id: '',
           title: _titleController.text,
-          summaryId: '', // Not linked to a summary in this context
           flashcards: _flashcards,
           timestamp: Timestamp.now(),
         ),

@@ -23,7 +23,7 @@ class Summary {
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
       'userId': userId,
       'content': content,

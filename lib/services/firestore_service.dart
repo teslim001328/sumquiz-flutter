@@ -30,7 +30,7 @@ class FirestoreService {
   }
 
   Future<void> saveUserData(UserModel user) {
-    return _db.collection('users').doc(user.uid).set(user.toJson());
+    return _db.collection('users').doc(user.uid).set(user.toFirestore());
   }
 
   Future<bool> canGenerate(String uid, String feature) async {
@@ -77,7 +77,7 @@ class FirestoreService {
           .doc(userId)
           .collection('summaries')
           .doc(summary.id)
-          .set(summary.toJson());
+          .set(summary.toFirestore());
       
       // Mark as synced
       await _localDb.updateSummarySyncStatus(summary.id, true);
@@ -153,7 +153,7 @@ class FirestoreService {
           .doc(userId)
           .collection('quizzes')
           .doc(quiz.id)
-          .set(quiz.toJson());
+          .set(quiz.toFirestore());
       
       // Mark as synced
       await _localDb.updateQuizSyncStatus(quiz.id, true);
@@ -190,7 +190,7 @@ class FirestoreService {
           .doc(quizId)
           .update({
             'title': title,
-            'questions': questions.map((q) => q.toJson()).toList(),
+            'questions': questions.map((q) => q.toFirestore()).toList(),
             'timestamp': timestamp,
           });
       
@@ -237,7 +237,7 @@ class FirestoreService {
           .doc(userId)
           .collection('flashcard_sets')
           .doc(flashcardSet.id)
-          .set(flashcardSet.toJson());
+          .set(flashcardSet.toFirestore());
       
       // Mark as synced
       await _localDb.updateFlashcardSetSyncStatus(flashcardSet.id, true);
@@ -273,7 +273,7 @@ class FirestoreService {
           .doc(flashcardSetId)
           .update({
             'title': title,
-            'flashcards': flashcards.map((f) => f.toJson()).toList(),
+            'flashcards': flashcards.map((f) => f.toFirestore()).toList(),
             'timestamp': timestamp,
           });
       

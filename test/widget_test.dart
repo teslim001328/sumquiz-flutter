@@ -10,7 +10,8 @@ class MockUser extends Mock implements User {}
 void main() {
   testWidgets('app builds', (WidgetTester tester) async {
     final authService = MockAuthService();
-    when(authService.authStateChanges).thenAnswer((_) => Stream.value(null));
+    // Corrected to use the new 'user' stream instead of the old 'authStateChanges'
+    when(authService.user).thenAnswer((_) => Stream.value(null));
     await tester.pumpWidget(MyApp(authService: authService));
     expect(find.byType(MyApp), findsOneWidget);
   });

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:myapp/models/quiz_question.dart';
+import 'package:uuid/uuid.dart';
 
 class Quiz {
   final String id;
@@ -8,39 +9,38 @@ class Quiz {
   final Timestamp timestamp;
 
   Quiz({
-    required this.id,
+    String? id,
     required this.title,
     required this.questions,
-    required this.timestamp,
-  });
+    Timestamp? timestamp,
+  })  : id = id ?? Uuid().v4(),
+        timestamp = timestamp ?? Timestamp.now();
 
   factory Quiz.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    Map data = doc.data() as Map<String, dynamic>;
     return Quiz(
       id: doc.id,
       title: data['title'] ?? '',
       questions: (data['questions'] as List<dynamic>? ?? [])
-          .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
+          .map((q) => QuizQuestion.fromMap(q))
           .toList(),
       timestamp: data['timestamp'] ?? Timestamp.now(),
     );
   }
 
-  factory Quiz.fromJson(Map<String, dynamic> json) {
+  factory Quiz.fromMap(Map<String, dynamic> map) {
     return Quiz(
-      id: '', // Not available from the AI response
-      title: json['title'] as String,
-      questions: (json['questions'] as List<dynamic>)
-          .map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
+      title: map['title'] ?? '',
+      questions: (map['questions'] as List<dynamic>? ?? [])
+          .map((q) => QuizQuestion.fromMap(q))
           .toList(),
-      timestamp: Timestamp.now(), // Set a default timestamp
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toFirestore() {
     return {
       'title': title,
-      'questions': questions.map((q) => q.toJson()).toList(),
+      'questions': questions.map((q) => q.toFirestore()).toList(),
       'timestamp': timestamp,
     };
   }
