@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -16,12 +17,17 @@ import 'views/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await LocalDatabaseService().init();
-  
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Listen for the debug token and log it
+  FirebaseAppCheck.instance.onTokenChange.listen((token) {
+    developer.log('App Check Token: $token', name: 'com.example.myapp.app_check');
+  });
 
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
@@ -43,7 +49,10 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<AuthService>.value(value: authService),
-        // The new StreamProvider that provides the UserModel directly.
+        StreamProvider<User?>(
+          create: (context) => context.read<AuthService>().authStateChanges,
+          initialData: null,
+        ),
         StreamProvider<UserModel?>(
           create: (context) => context.read<AuthService>().user,
           initialData: null,

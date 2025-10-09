@@ -54,7 +54,6 @@ class ProgressScreenState extends State<ProgressScreen> {
       ];
     });
     
-    // Load spaced repetition stats
     _loadSpacedRepetitionStats();
   }
 
@@ -76,38 +75,27 @@ class ProgressScreenState extends State<ProgressScreen> {
   Widget build(BuildContext context) {
     final userModel = Provider.of<UserModel?>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadStats,
-          ),
-        ],
-      ),
-      body: userModel == null
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDateSelector(),
-                    const SizedBox(height: 20),
-                    _buildDailyStatsCard(),
-                    const SizedBox(height: 20),
-                    _buildSpacedRepetitionStatsCard(),
-                    const SizedBox(height: 20),
-                    _buildWeeklyChart(),
-                    const SizedBox(height: 20),
-                    _buildAchievementsSection(),
-                  ],
-                ),
+    return userModel == null
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDateSelector(),
+                  const SizedBox(height: 20),
+                  _buildDailyStatsCard(),
+                  const SizedBox(height: 20),
+                  _buildSpacedRepetitionStatsCard(),
+                  const SizedBox(height: 20),
+                  _buildWeeklyChart(),
+                  const SizedBox(height: 20),
+                  _buildAchievementsSection(),
+                ],
               ),
             ),
-    );
+          );
   }
 
   Widget _buildDateSelector() {

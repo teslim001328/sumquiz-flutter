@@ -12,6 +12,8 @@ class AuthService {
 
   AuthService(this._auth);
 
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+
   Stream<UserModel?> get user {
     return _auth.authStateChanges().asyncMap((user) async {
       if (user == null) {

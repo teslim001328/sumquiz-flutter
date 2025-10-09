@@ -94,22 +94,11 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Spaced Repetition', style: GoogleFonts.roboto()),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDueFlashcards,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _message.isNotEmpty
-              ? _buildMessageView()
-              : _buildFlashcardReview(),
-    );
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _message.isNotEmpty
+            ? _buildMessageView()
+            : _buildFlashcardReview();
   }
 
   Widget _buildMessageView() {

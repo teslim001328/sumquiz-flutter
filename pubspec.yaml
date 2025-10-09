@@ -19,7 +19,7 @@ dependencies:
   cloud_firestore: any
   google_sign_in: any
   firebase_app_check: any
-  firebase_ai: any
+  firebase_ai: ^3.3.0
 
   # UI and Utility Packages
   provider: ^6.1.2

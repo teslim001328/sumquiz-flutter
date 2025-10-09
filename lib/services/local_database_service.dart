@@ -15,7 +15,7 @@ class LocalDatabaseService {
   static const String _flashcardSetsBoxName = 'flashcardSets';
   static const String _foldersBoxName = 'folders';
   static const String _contentFoldersBoxName = 'contentFolders';
-  static const String _spacedRepetitionBoxName = 'spacedRepetition';
+  static const String _spacedRepetitionBoxName = 'spaced_repetition';
 
   late Box<LocalSummary> _summariesBox;
   late Box<LocalQuiz> _quizzesBox;
@@ -28,28 +28,31 @@ class LocalDatabaseService {
   factory LocalDatabaseService() => _instance;
   LocalDatabaseService._internal();
 
+  bool _isInitialized = false;
+
   Future<void> init() async {
+    if (_isInitialized) return;
+
     try {
-      // Initialize Hive with Flutter
       await Hive.initFlutter();
       
-      // Register adapters
-      Hive.registerAdapter(LocalSummaryAdapter());
-      Hive.registerAdapter(LocalQuizAdapter());
-      Hive.registerAdapter(LocalQuizQuestionAdapter());
-      Hive.registerAdapter(LocalFlashcardAdapter());
-      Hive.registerAdapter(LocalFlashcardSetAdapter());
-      Hive.registerAdapter(FolderAdapter());
-      Hive.registerAdapter(ContentFolderAdapter());
-      Hive.registerAdapter(SpacedRepetitionItemAdapter());
+      if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(LocalSummaryAdapter());
+      if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(LocalQuizAdapter());
+      if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(LocalQuizQuestionAdapter());
+      if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(LocalFlashcardAdapter());
+      if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(LocalFlashcardSetAdapter());
+      if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(FolderAdapter());
+      if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(ContentFolderAdapter());
+      if (!Hive.isAdapterRegistered(8)) Hive.registerAdapter(SpacedRepetitionItemAdapter());
       
-      // Open boxes
       _summariesBox = await Hive.openBox<LocalSummary>(_summariesBoxName);
       _quizzesBox = await Hive.openBox<LocalQuiz>(_quizzesBoxName);
       _flashcardSetsBox = await Hive.openBox<LocalFlashcardSet>(_flashcardSetsBoxName);
       _foldersBox = await Hive.openBox<Folder>(_foldersBoxName);
       _contentFoldersBox = await Hive.openBox<ContentFolder>(_contentFoldersBoxName);
       _spacedRepetitionBox = await Hive.openBox<SpacedRepetitionItem>(_spacedRepetitionBoxName);
+      
+      _isInitialized = true;
     } catch (e) {
       debugPrint('Error initializing local database: $e');
       rethrow;
@@ -247,5 +250,4 @@ class LocalDatabaseService {
   Future<void> deleteSpacedRepetitionItem(String id) async {
     await _spacedRepetitionBox.delete(id);
   }
-
 }

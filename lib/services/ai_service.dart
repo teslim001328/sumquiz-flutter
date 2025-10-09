@@ -9,8 +9,8 @@ class AIService {
   final GenerativeModel _model;
 
   AIService()
-      : _model = FirebaseAI.firebaseAI(backend: GenerativeBackend.googleAI())
-            .generativeModel(model: 'gemini-2.5-flash');
+      : _model = FirebaseAI.googleAI()
+            .generativeModel(model: 'gemini-2.5-pro');
 
   Future<List<Flashcard>> generateFlashcards(Summary summary) async {
     try {
@@ -25,6 +25,7 @@ class AIService {
       ]);
 
       if (response.text != null) {
+        // Clean the response to remove markdown code fences
         String jsonString = response.text!
             .replaceAll('```json', '')
             .replaceAll('```', '')
@@ -34,7 +35,7 @@ class AIService {
             jsonResponse.map((json) => Flashcard.fromMap(json)).toList();
         return flashcards;
       } else {
-        throw Exception('Failed to generate flashcards: No response from model.');
+        throw Exception('No response from model.');
       }
     } catch (e) {
       debugPrint('Error generating flashcards: $e');
@@ -55,6 +56,7 @@ class AIService {
       ]);
 
       if (response.text != null) {
+        // Clean the response to remove markdown code fences
         String jsonString = response.text!
             .replaceAll('```json', '')
             .replaceAll('```', '')
@@ -63,7 +65,7 @@ class AIService {
         final quiz = Quiz.fromMap(jsonResponse);
         return quiz;
       } else {
-        throw Exception('Failed to generate quiz: No response from model.');
+        throw Exception('No response from model.');
       }
     } catch (e) {
       debugPrint('Error generating quiz: $e');
@@ -77,7 +79,7 @@ class AIService {
           'Provide a concise summary of the following content. Focus on the key points and main ideas.';
 
       final promptParts = <Part>[];
-      promptParts.add(TextPart(prompt));
+      promptParts.add(const TextPart(prompt));
 
       if (pdfBytes != null) {
         promptParts.add(InlineDataPart('application/pdf', pdfBytes));
@@ -87,7 +89,7 @@ class AIService {
       } else if (text.isNotEmpty) {
         promptParts.add(TextPart(text));
       } else {
-        return 'Error: Please provide text or a PDF to summarize.';
+        return 'Error: Provide text or a PDF to summarize.';
       }
 
       final response = await _model.generateContent([Content('user', promptParts)]);
@@ -95,16 +97,16 @@ class AIService {
       if (response.text != null && response.text!.isNotEmpty) {
         return response.text!;
       } else {
-        return 'Error: Failed to generate summary. The model returned an empty response.';
+        return 'Error: Model returned empty response.';
       }
     } catch (e) {
       debugPrint('Error generating summary: $e');
-      return 'Error: An unexpected error occurred while generating the summary. See logs for details.';
+      return 'Error: Unexpected error occurred. See logs.';
     }
   }
 
   Future<List<dynamic>> generateQuiz(String text) async {
-    // This is a placeholder implementation.
+    // Placeholder
     await Future.delayed(const Duration(seconds: 2));
     return [
       {

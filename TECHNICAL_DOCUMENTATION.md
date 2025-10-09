@@ -153,10 +153,11 @@ Manages in-app purchases:
 
 ### Navigation Structure
 
-The app uses a bottom navigation bar with three main sections:
-1. **Library**: Content creation and saved items
-2. **Progress**: Learning analytics and statistics
-3. **Profile**: User settings and subscription management
+The app uses a bottom navigation bar with four main sections:
+1. **Library**: Content creation and saved items.
+2. **Review**: Spaced repetition review sessions for flashcards to enhance memory retention.
+3. **Progress**: Learning analytics and statistics.
+4. **Profile**: User settings and subscription management.
 
 ### Content Creation Screens
 
@@ -177,7 +178,7 @@ The app implements a freemium model with daily usage limits:
 - Free users: Limited daily generations
 - Pro users: Unlimited access
 - Usage tracked per feature (summaries, quizzes, flashcards)
-- Automatic reset based on timestamp
+- Automatic reset based on a timestamp
 
 ## Error Handling Strategy
 
