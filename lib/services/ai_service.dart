@@ -9,7 +9,7 @@ class AIService {
   final GenerativeModel _model;
 
   AIService()
-      : _model = FirebaseAI.instance
+      : _model = FirebaseAI.firebaseAI(backend: GenerativeBackend.googleAI())
             .generativeModel(model: 'gemini-2.5-flash');
 
   Future<List<Flashcard>> generateFlashcards(Summary summary) async {
@@ -17,7 +17,7 @@ class AIService {
       const prompt =
           'Generate a list of flashcards based on the following summary. '
           'Provide the output in JSON format with the following structure: '
-          '[{\"question\": \"...\", \"answer\": \"...\"}, {\"question\": \"...\", \"answer\": \"...\"}]';
+          '[{"question": "...", "answer": "..."}, {"question": "...", "answer": "..."}]';
 
       final response = await _model.generateContent([
         Content.text(prompt),
@@ -47,7 +47,7 @@ class AIService {
       const prompt =
           'Generate a 10-question multiple-choice quiz based on the following summary. '
           'Provide the output in JSON format with the following structure: '
-          '{\"title\": \"Quiz Title\", \"questions\": [{\"question\": \"...\", \"options\": [\"...\", \"...\", \"...\"], \"correctAnswer\": \"...\"}]}';
+          '{"title": "Quiz Title", "questions": [{"question": "...", "options": ["...", "...", "..."], "correctAnswer": "..."}]}';
 
       final response = await _model.generateContent([
         Content.text(prompt),
@@ -80,7 +80,7 @@ class AIService {
       promptParts.add(TextPart(prompt));
 
       if (pdfBytes != null) {
-        promptParts.add(DataPart('application/pdf', pdfBytes));
+        promptParts.add(InlineDataPart('application/pdf', pdfBytes));
         if (text.isNotEmpty) {
           promptParts.add(TextPart('The user also provided this text as context: $text'));
         }
@@ -90,7 +90,7 @@ class AIService {
         return 'Error: Please provide text or a PDF to summarize.';
       }
 
-      final response = await _model.generateContent([Content.multi(promptParts)]);
+      final response = await _model.generateContent([Content('user', promptParts)]);
 
       if (response.text != null && response.text!.isNotEmpty) {
         return response.text!;
