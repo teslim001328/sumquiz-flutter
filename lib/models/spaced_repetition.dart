@@ -25,13 +25,33 @@ class SpacedRepetitionItem extends HiveObject {
   @HiveField(6)
   double easeFactor;
 
+  @HiveField(7)
+  DateTime lastReviewed;
+
+  @HiveField(8)
+  DateTime createdAt;
+
+  @HiveField(9)
+  DateTime updatedAt;
+
+  @HiveField(10)
+  int repetitionCount;
+
+  @HiveField(11)
+  int correctStreak;
+
   SpacedRepetitionItem({
     required this.id,
     required this.userId,
     required this.contentId,
     required this.contentType,
     required this.nextReviewDate,
+    required this.lastReviewed,
+    required this.createdAt,
+    required this.updatedAt,
     this.interval = 1,
     this.easeFactor = 2.5,
+    this.repetitionCount = 0,
+    this.correctStreak = 0,
   });
 }

@@ -16,6 +16,7 @@ class LocalDatabaseService {
   static const String _foldersBoxName = 'folders';
   static const String _contentFoldersBoxName = 'contentFolders';
   static const String _spacedRepetitionBoxName = 'spaced_repetition';
+  static const String _settingsBoxName = 'settings';
 
   late Box<LocalSummary> _summariesBox;
   late Box<LocalQuiz> _quizzesBox;
@@ -23,6 +24,7 @@ class LocalDatabaseService {
   late Box<Folder> _foldersBox;
   late Box<ContentFolder> _contentFoldersBox;
   late Box<SpacedRepetitionItem> _spacedRepetitionBox;
+  late Box _settingsBox;
 
   static final LocalDatabaseService _instance = LocalDatabaseService._internal();
   factory LocalDatabaseService() => _instance;
@@ -51,12 +53,23 @@ class LocalDatabaseService {
       _foldersBox = await Hive.openBox<Folder>(_foldersBoxName);
       _contentFoldersBox = await Hive.openBox<ContentFolder>(_contentFoldersBoxName);
       _spacedRepetitionBox = await Hive.openBox<SpacedRepetitionItem>(_spacedRepetitionBoxName);
+      _settingsBox = await Hive.openBox(_settingsBoxName);
       
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error initializing local database: $e');
       rethrow;
     }
+  }
+
+  Box<SpacedRepetitionItem> getSpacedRepetitionBox() => _spacedRepetitionBox;
+
+  Future<bool> isOfflineModeEnabled() async {
+    return _settingsBox.get('offlineMode', defaultValue: false);
+  }
+
+  Future<void> setOfflineMode(bool isEnabled) async {
+    await _settingsBox.put('offlineMode', isEnabled);
   }
 
   // Summary operations

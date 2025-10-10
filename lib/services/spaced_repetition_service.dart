@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 import 'dart:math';
-import '../models/spaced_repetition_item.dart';
+import '../models/spaced_repetition.dart';
 import '../models/local_flashcard.dart';
 import 'dart:developer' as developer;
 
@@ -12,8 +12,11 @@ class SpacedRepetitionService {
   Future<void> scheduleReview(String flashcardId) async {
     final now = DateTime.now();
     final newItem = SpacedRepetitionItem(
+      id: flashcardId, // id is required
+      userId: '', // userId is required, you may need to pass this in
       contentId: flashcardId,
       contentType: 'flashcard',
+      nextReviewDate: now, // nextReviewDate is required
       lastReviewed: now,
       createdAt: now,
       updatedAt: now,
@@ -57,8 +60,11 @@ class SpacedRepetitionService {
       }
 
       final updatedItem = SpacedRepetitionItem(
+        id: item.id,
+        userId: item.userId,
         contentId: item.contentId,
         contentType: item.contentType,
+        nextReviewDate: now.add(Duration(days: _getInterval(newRepetitionCount))),
         repetitionCount: newRepetitionCount,
         correctStreak: newCorrectStreak,
         lastReviewed: now,
@@ -77,7 +83,7 @@ class SpacedRepetitionService {
   }
 
   Future<Map<String, dynamic>> getStatistics(String userId) async {
-    final allItems = _srsBox.values.toList();
+    final allItems = _srsBox.values.where((item) => item.userId == userId).toList();
 
     if (allItems.isEmpty) {
       return {

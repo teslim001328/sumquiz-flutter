@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:developer' as developer;
+import 'package:go_router/go_router.dart';
 
 import '../../models/library_item.dart';
 import '../../services/firestore_service.dart';
@@ -15,6 +13,10 @@ import '../../models/quiz_model.dart';
 import '../../models/flashcard_set.dart';
 import '../screens/edit_content_screen.dart';
 import '../../models/folder.dart';
+import 'summary_screen.dart';
+import 'quiz_screen.dart';
+import 'flashcards_screen.dart';
+import '../widgets/add_content_modal.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -27,489 +29,325 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
   late TabController _tabController;
   final FirestoreService _firestoreService = FirestoreService();
   final LocalDatabaseService _localDb = LocalDatabaseService();
-  bool _isOffline = false;
   final TextEditingController _searchController = TextEditingController();
+
+  bool _isOfflineMode = false;
+  bool _showSettings = false;
   String _searchQuery = '';
-  List<LibraryItem> _allItems = [];
-  List<LibraryItem> _filteredItems = [];
-  List<Folder> _folders = [];
-  String? _selectedFolderId;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    Connectivity().onConnectivityChanged.listen((result) {
-      setState(() {
-        _isOffline = result.contains(ConnectivityResult.none);
-      });
-    });
-    
+    _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(_onSearchChanged);
-    _loadFolders();
+    _loadOfflineModePreference();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      _searchQuery = _searchController.text.toLowerCase();
-    });
+  void _onSearchChanged() => setState(() => _searchQuery = _searchController.text.toLowerCase());
+
+  Future<void> _loadOfflineModePreference() async {
+    final isOffline = await _localDb.isOfflineModeEnabled();
+    if (mounted) setState(() => _isOfflineMode = isOffline);
   }
 
-  Future<void> _loadFolders() async {
-    final user = Provider.of<User?>(context, listen: false);
-    if (user != null) {
-      try {
-        final folders = await _localDb.getAllFolders(user.uid);
-        setState(() {
-          _folders = folders;
-        });
-      } catch (e, s) {
-        developer.log('Error loading folders: $e', name: 'my_app.library', error: e, stackTrace: s);
-      }
-    }
+  Future<void> _setOfflineMode(bool isEnabled) async {
+    await _localDb.setOfflineMode(isEnabled);
+    setState(() => _isOfflineMode = isEnabled);
   }
+
+  void _toggleSettings() => setState(() => _showSettings = !_showSettings);
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<User?>(context);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: _buildAppBar(),
+      body: _showSettings ? _buildSettingsContent() : _buildLibraryContent(),
+    );
+  }
 
-    return Column(
-      children: [
-        // This AppBar was causing the issue, so we create a similar looking widget
-        // that is not an AppBar. This is a temporary solution until we refactor the
-        // AppBar to be managed by the MainScreen.
-        Container(
-          padding: const EdgeInsets.only(top: 25.0, left: 8.0, right: 8.0),
-          color: Theme.of(context).primaryColor,
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Library',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white),
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    onSelected: (String result) {
-                      if (result == 'create_folder') {
-                        _createFolder();
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      const PopupMenuItem<String>(
-                        value: 'create_folder',
-                        child: Text('Create Folder'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Summaries'),
-                  Tab(text: 'Quizzes'),
-                  Tab(text: 'Flashcards'),
-                ],
-                indicatorColor: Colors.white,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-              ),
-            ],
-          )
-        ),
-        if (_isOffline)
-          Container(
-            color: Colors.red,
-            padding: const EdgeInsets.all(8.0),
-            child: const Center(
-              child: Text(
-                'You are offline - displaying saved content.',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search library...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                      },
-                    )
-                  : null,
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(25.0)),
-              ),
-            ),
-          ),
-        ),
-        if (_folders.isNotEmpty)
-          Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                ChoiceChip(
-                  label: const Text('All'),
-                  selected: _selectedFolderId == null,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedFolderId = null;
-                    });
-                  },
-                ),
-                const SizedBox(width: 8),
-                ..._folders.map((folder) => ChoiceChip(
-                      label: Text(folder.name),
-                      selected: _selectedFolderId == folder.id,
-                      onSelected: (selected) {
-                        setState(() {
-                          _selectedFolderId = selected ? folder.id : null;
-                        });
-                      },
-                    )),
-              ],
-            ),
-          ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildLibraryList(user, 'summaries'),
-              _buildLibraryList(user, 'quizzes'),
-              _buildLibraryList(user, 'flashcards'),
-            ],
-          ),
-        ),
-        // We will move the FloatingActionButton to the MainScreen later
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.black,
+      elevation: 0,
+      title: Text(_showSettings ? 'Settings' : 'Library', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      centerTitle: true,
+      actions: [
+        IconButton(icon: Icon(_showSettings ? Icons.close : Icons.settings_outlined), onPressed: _toggleSettings),
       ],
     );
   }
 
-  Widget _buildLibraryList(User? user, String type) {
+  Widget _buildLibraryContent() {
+    final user = Provider.of<User?>(context);
     if (user == null) {
-      return const Center(child: Text('Please log in to see your library.'));
+      return const Center(child: Text('Please log in to see your library.', style: TextStyle(color: Colors.white)));
     }
 
-    return StreamBuilder<List<LibraryItem>>(
-      stream: _getStreamForType(user.uid, type),
+    return Column(
+      children: [
+        _buildSearchAndTabs(),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildCombinedList(user.uid),
+              _buildLibraryList(user.uid, 'summaries'),
+              _buildLibraryList(user.uid, 'quizzes'),
+              _buildLibraryList(user.uid, 'flashcards'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildSearchAndTabs() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search Library...',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          _buildTabBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return TabBar(
+      controller: _tabController,
+      isScrollable: true,
+      tabs: const [
+        Tab(text: 'All'),
+        Tab(text: 'Summaries'),
+        Tab(text: 'Quizzes'),
+        Tab(text: 'Flashcards'),
+      ],
+      indicatorColor: Colors.white,
+      labelColor: Colors.white,
+      unselectedLabelColor: Colors.white70,
+    );
+  }
+
+  Widget _buildCombinedList(String userId) {
+    return StreamBuilder<Map<String, List<LibraryItem>>>(
+      stream: _firestoreService.streamAllItems(userId),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
+        
+        final allItems = snapshot.data!.values.expand((list) => list).toList();
+        allItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+        return _buildContentList(allItems, userId, 'all');
+      },
+    );
+  }
+
+  Widget _buildLibraryList(String userId, String type) {
+    return StreamBuilder<List<LibraryItem>>(
+      stream: _getStreamForType(userId, type),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
         }
+        return _buildContentList(snapshot.data ?? [], userId, type);
+      },
+    );
+  }
+  
+  Widget _buildContentList(List<LibraryItem> items, String userId, String type) {
+    final filteredItems = items.where((item) {
+      final matchesSearch = item.title.toLowerCase().contains(_searchQuery);
+      return matchesSearch;
+    }).toList();
 
-        _allItems = snapshot.data ?? [];
-        _filteredItems = _allItems.where((item) {
-          final matchesSearch = item.title.toLowerCase().contains(_searchQuery);
-          if (_selectedFolderId != null) {
-            return matchesSearch;
-          }
-          return matchesSearch;
-        }).toList();
+    if (filteredItems.isEmpty) {
+      return _buildEmptyState(type);
+    }
 
-        if (_filteredItems.isEmpty) {
-          return _buildEmptyState(_searchQuery.isEmpty ? type : 'search results');
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: _filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = _filteredItems[index];
-            return Card(
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: ListTile(
-                title: Text(
-                  item.title,
-                  style: GoogleFonts.roboto(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Created on ${DateFormat.yMMMd().format(item.timestamp.toDate())}',
-                  style: GoogleFonts.openSans(),
-                ),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (String result) {
-                    if (result == 'edit') {
-                      _editContent(user.uid, item, type);
-                    } else if (result == 'delete') {
-                      _deleteContent(user.uid, item, type);
-                    }
-                  },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                    const PopupMenuItem<String>(
-                      value: 'edit',
-                      child: Text('Edit'),
-                    ),
-                    const PopupMenuItem<String>(
-                      value: 'delete',
-                      child: Text('Delete'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      itemCount: filteredItems.length,
+      itemBuilder: (context, index) {
+        final item = filteredItems[index];
+        return ListTile(
+          title: Text(item.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          subtitle: Text(item.type.toString().split('.').last, style: TextStyle(color: Colors.grey[400])),
+          trailing: IconButton(icon: const Icon(Icons.more_horiz, color: Colors.white), onPressed: () => _showItemMenu(userId, item)),
+          onTap: () => _navigateToContent(userId, item),
         );
       },
     );
   }
 
   Widget _buildEmptyState(String type) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.description, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          Text(
-            'No $type found',
-            style: GoogleFonts.oswald(fontSize: 22, fontWeight: FontWeight.bold),
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 64.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.network('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Fempty_library.png?alt=media&token=eb3b6c7a-4c27-4048-812e-1e9a26c4f877', height: 200),
+              const SizedBox(height: 32),
+              Text('No ${type == 'all' ? 'items' : type} found', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Text(
+                'You haven\'t added any items to your library yet. Start exploring and save your favorite content.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[400], fontSize: 16, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () => showModalBottomSheet(context: context, builder: (context) => const AddContentModal()),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                child: const Text('Add Content', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            _searchQuery.isEmpty 
-                ? 'Create a new one to get started' 
-                : 'Try a different search term',
-            style: GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // Methods like _createFolder, _renameFolder, etc. are omitted for brevity but are still in the class
-  // They will need to be refactored to work without the Scaffold if they use Scaffold.of(context)
-
-  Future<void> _createFolder() async {
+  Widget _buildSettingsContent() {
     final user = Provider.of<User?>(context, listen: false);
-    if (user == null) return;
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
 
-    final folderNameController = TextEditingController();
-    
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Folder'),
-        content: TextField(
-          controller: folderNameController,
-          decoration: const InputDecoration(hintText: 'Folder name'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            title: const Text('Offline Mode', style: TextStyle(color: Colors.white)),
+            value: _isOfflineMode,
+            onChanged: _setOfflineMode,
+            secondary: const Icon(Icons.signal_cellular_off, color: Colors.white),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(folderNameController.text),
-            child: const Text('Create'),
-          ),
+          const Divider(color: Colors.grey),
+          const Text('My Content', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          _buildContentCategory(user.uid, 'Summaries', Icons.description, 'summaries'),
+          _buildContentCategory(user.uid, 'Quizzes', Icons.quiz, 'quizzes'),
+          _buildContentCategory(user.uid, 'Flashcards', Icons.style, 'flashcards'),
         ],
       ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      try {
-        final folder = Folder(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: result,
-          userId: user.uid,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
+  }
+  
+  Widget _buildContentCategory(String userId, String title, IconData icon, String type) {
+    return StreamBuilder<List<LibraryItem>>(
+      stream: _getStreamForType(userId, type),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.length ?? 0;
+        return ListTile(
+          leading: Icon(icon, color: Colors.white),
+          title: Text(title, style: const TextStyle(color: Colors.white)),
+          subtitle: Text('$count items', style: TextStyle(color: Colors.grey[400])),
         );
-        
-        await _localDb.saveFolder(folder);
-        _loadFolders();
-        
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Folder created successfully!')),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating folder: $e')),
-        );
-      }
-    }
+      },
+    );
   }
 
   Stream<List<LibraryItem>> _getStreamForType(String userId, String type) {
-    switch (type) {
-      case 'summaries':
-        return _firestoreService.streamSummaries(userId).map((summaries) => summaries
-            .map((s) => LibraryItem(
-                  id: s.id, 
-                  title: s.content, 
-                  type: LibraryItemType.summary, 
-                  timestamp: s.timestamp,
-                ))
-            .toList());
-      case 'quizzes':
-        return _firestoreService.streamQuizzes(userId).map((quizzes) => quizzes
-            .map((q) => LibraryItem(
-                  id: q.id, 
-                  title: q.title, 
-                  type: LibraryItemType.quiz, 
-                  timestamp: q.timestamp,
-                ))
-            .toList());
-      case 'flashcards':
-        return _firestoreService.streamFlashcardSets(userId).map((flashcards) => flashcards
-            .map((f) => LibraryItem(
-                  id: f.id, 
-                  title: f.title, 
-                  type: LibraryItemType.flashcards, 
-                  timestamp: f.timestamp,
-                ))
-            .toList());
-      default:
-        return Stream.value([]);
-    }
+    return _firestoreService.streamItems(userId, type);
   }
 
-  Future<void> _editContent(String userId, LibraryItem item, String type) async {
-    // Fetch the full content based on type
-    EditableContent? editableContent;
-    
-    switch (type) {
-      case 'summaries':
-        final summaryDoc = await _firestoreService.db
-            .collection('users')
-            .doc(userId)
-            .collection('summaries')
-            .doc(item.id)
-            .get();
-        if (summaryDoc.exists) {
-          final summary = Summary.fromFirestore(summaryDoc);
-          editableContent = EditableContent.fromSummary(
-            summary.id,
-            summary.content,
-            summary.timestamp,
-          );
-        }
-        break;
-      case 'quizzes':
-        final quizDoc = await _firestoreService.db
-            .collection('users')
-            .doc(userId)
-            .collection('quizzes')
-            .doc(item.id)
-            .get();
-        if (quizDoc.exists) {
-          final quiz = Quiz.fromFirestore(quizDoc);
-          editableContent = EditableContent.fromQuiz(
-            quiz.id,
-            quiz.title,
-            quiz.questions,
-            quiz.timestamp,
-          );
-        }
-        break;
-      case 'flashcards':
-        final flashcardDoc = await _firestoreService.db
-            .collection('users')
-            .doc(userId)
-            .collection('flashcard_sets')
-            .doc(item.id)
-            .get();
-        if (flashcardDoc.exists) {
-          final flashcardSet = FlashcardSet.fromFirestore(flashcardDoc);
-          editableContent = EditableContent.fromFlashcardSet(
-            flashcardSet.id,
-            flashcardSet.title,
-            flashcardSet.flashcards,
-            flashcardSet.timestamp,
-          );
-        }
-        break;
-    }
+  void _showItemMenu(String userId, LibraryItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      builder: (context) => Wrap(
+        children: [
+          ListTile(leading: const Icon(Icons.edit, color: Colors.white), title: const Text('Edit', style: TextStyle(color: Colors.white)), onTap: () => { Navigator.pop(context), _editContent(userId, item) }),
+          ListTile(leading: const Icon(Icons.delete, color: Colors.white), title: const Text('Delete', style: TextStyle(color: Colors.white)), onTap: () => { Navigator.pop(context), _deleteContent(userId, item) }),
+        ],
+      ),
+    );
+  }
 
-    if (editableContent != null) {
-      if (!mounted) return;
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EditContentScreen(content: editableContent!),
-        ),
-      );
-
-      if (result == true) {
-        setState(() {});
+  Future<void> _navigateToContent(String userId, LibraryItem item) async {
+    final content = await _firestoreService.getSpecificItem(userId, item);
+    if (content != null && mounted) {
+      Widget screen;
+      if (content is Summary) {
+        screen = SummaryScreen(summary: content);
+      } else if (content is Quiz) {
+        screen = QuizScreen(quiz: content);
+      } else if (content is FlashcardSet) {
+        screen = FlashcardsScreen(flashcardSet: content);
+      } else {
+        return;
       }
+      
+      Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
     }
   }
 
-  Future<void> _deleteContent(String userId, LibraryItem item, String type) async {
+  Future<void> _editContent(String userId, LibraryItem item) async {
+    final content = await _firestoreService.getSpecificItem(userId, item);
+    if (content != null && mounted) {
+      EditableContent editableContent;
+      if (content is Summary) {
+        editableContent = EditableContent.fromSummary(content.id, content.content, content.timestamp);
+      } else if (content is Quiz) {
+        editableContent = EditableContent.fromQuiz(content.id, content.title, content.questions, content.timestamp);
+      } else if (content is FlashcardSet) {
+        editableContent = EditableContent.fromFlashcardSet(content.id, content.title, content.flashcards, content.timestamp);
+      } else {
+        return;
+      }
+
+      Navigator.push(context, MaterialPageRoute(builder: (context) => EditContentScreen(content: editableContent)));
+    }
+  }
+
+  Future<void> _deleteContent(String userId, LibraryItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Content'),
         content: const Text('Are you sure you want to delete this content?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
         ],
       ),
-    );
+    ) ?? false;
 
-    if (confirmed == true) {
-      try {
-        switch (type) {
-          case 'summaries':
-            await _localDb.deleteSummary(item.id);
-            break;
-          case 'quizzes':
-            await _localDb.deleteQuiz(item.id);
-            break;
-          case 'flashcards':
-            await _localDb.deleteFlashcardSet(item.id);
-            break;
-        }
-        
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Content deleted successfully!')),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting content: $e')),
-        );
+    if (confirmed) {
+      await _firestoreService.deleteItem(userId, item);
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Content deleted')));
       }
     }
   }

@@ -22,15 +22,20 @@ class SpacedRepetitionItemAdapter extends TypeAdapter<SpacedRepetitionItem> {
       contentId: fields[2] as String,
       contentType: fields[3] as String,
       nextReviewDate: fields[4] as DateTime,
+      lastReviewed: fields[7] as DateTime,
+      createdAt: fields[8] as DateTime,
+      updatedAt: fields[9] as DateTime,
       interval: fields[5] as int,
       easeFactor: fields[6] as double,
+      repetitionCount: fields[10] as int,
+      correctStreak: fields[11] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, SpacedRepetitionItem obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +49,17 @@ class SpacedRepetitionItemAdapter extends TypeAdapter<SpacedRepetitionItem> {
       ..writeByte(5)
       ..write(obj.interval)
       ..writeByte(6)
-      ..write(obj.easeFactor);
+      ..write(obj.easeFactor)
+      ..writeByte(7)
+      ..write(obj.lastReviewed)
+      ..writeByte(8)
+      ..write(obj.createdAt)
+      ..writeByte(9)
+      ..write(obj.updatedAt)
+      ..writeByte(10)
+      ..write(obj.repetitionCount)
+      ..writeByte(11)
+      ..write(obj.correctStreak);
   }
 
   @override

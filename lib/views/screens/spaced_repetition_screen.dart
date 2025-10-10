@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import '../../services/spaced_repetition_service.dart';
 import '../../models/local_flashcard.dart';
-import '../../models/spaced_repetition_item.dart';
+import '../../models/spaced_repetition.dart';
 
 class SpacedRepetitionScreen extends StatefulWidget {
   const SpacedRepetitionScreen({super.key});

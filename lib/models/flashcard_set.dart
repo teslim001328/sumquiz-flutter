@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:myapp/models/flashcard.dart';
+import 'flashcard.dart';
 
 class FlashcardSet {
   final String id;
@@ -8,7 +8,7 @@ class FlashcardSet {
   final Timestamp timestamp;
 
   FlashcardSet({
-    required this.id,
+    this.id = '', // Make the ID optional with a default value
     required this.title,
     required this.flashcards,
     required this.timestamp,
@@ -19,8 +19,8 @@ class FlashcardSet {
     return FlashcardSet(
       id: doc.id,
       title: data['title'] ?? '',
-      flashcards: (data['flashcards'] as List<dynamic>? ?? [])
-          .map((f) => Flashcard.fromMap(f))
+      flashcards: (data['flashcards'] as List)
+          .map((flashcard) => Flashcard.fromMap(flashcard))
           .toList(),
       timestamp: data['timestamp'] ?? Timestamp.now(),
     );
@@ -29,7 +29,7 @@ class FlashcardSet {
   Map<String, dynamic> toFirestore() {
     return {
       'title': title,
-      'flashcards': flashcards.map((f) => f.toFirestore()).toList(),
+      'flashcards': flashcards.map((flashcard) => flashcard.toFirestore()).toList(),
       'timestamp': timestamp,
     };
   }

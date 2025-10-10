@@ -76,7 +76,7 @@ class AuthService {
     }
   }
 
-  Future<void> signUpWithEmailAndPassword(String email, String password) async {
+  Future<void> signUpWithEmailAndPassword(String email, String password, String fullName) async {
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -87,7 +87,7 @@ class AuthService {
       if (user != null) {
         UserModel newUser = UserModel(
           uid: user.uid,
-          name: '', 
+          name: fullName, 
           email: user.email ?? '',
           subscriptionStatus: 'Free',
           dailyUsage: {},

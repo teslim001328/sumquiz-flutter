@@ -1,422 +1,286 @@
-import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import 'package:hive/hive.dart';
 import 'dart:developer' as developer;
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
-import '../../models/user_model.dart';
+import '../../services/local_database_service.dart';
 import '../../services/spaced_repetition_service.dart';
-import '../../models/spaced_repetition_item.dart';
+import '../../services/firestore_service.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
 
   @override
-  ProgressScreenState createState() => ProgressScreenState();
+  State<ProgressScreen> createState() => _ProgressScreenState();
 }
 
-class ProgressScreenState extends State<ProgressScreen> {
-  late SpacedRepetitionService _spacedRepetitionService;
-  DateTime _selectedDate = DateTime.now();
-  Map<String, dynamic> _dailyStats = {};
-  List<Map<String, dynamic>> _weeklyStats = [];
-  Map<String, dynamic> _spacedRepetitionStats = {};
+class _ProgressScreenState extends State<ProgressScreen> {
+  Future<Map<String, dynamic>>? _statsFuture;
+  User? _user;
 
   @override
-  void initState() {
-    super.initState();
-    final box = Hive.box<SpacedRepetitionItem>('spaced_repetition');
-    _spacedRepetitionService = SpacedRepetitionService(box);
-    _loadStats();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final user = Provider.of<User?>(context);
+    if (user != _user) {
+      setState(() {
+        _user = user;
+        if (user != null) {
+          _statsFuture = _loadStats(user.uid);
+        } else {
+          _statsFuture = null;
+        }
+      });
+    }
   }
 
-  Future<void> _loadStats() async {
-    // Load stats for the current user
-    // This would typically involve querying Firestore for user activity data
-    setState(() {
-      // Mock data for demonstration
-      _dailyStats = {
-        'summaries': 3,
-        'quizzes': 2,
-        'flashcards': 5,
-        'quizScore': 85.5,
-      };
-      
-      _weeklyStats = [
-        {'date': DateTime.now().subtract(const Duration(days: 6)), 'count': 5},
-        {'date': DateTime.now().subtract(const Duration(days: 5)), 'count': 7},
-        {'date': DateTime.now().subtract(const Duration(days: 4)), 'count': 3},
-        {'date': DateTime.now().subtract(const Duration(days: 3)), 'count': 8},
-        {'date': DateTime.now().subtract(const Duration(days: 2)), 'count': 6},
-        {'date': DateTime.now().subtract(const Duration(days: 1)), 'count': 4},
-        {'date': DateTime.now(), 'count': 9},
-      ];
-    });
-    
-    _loadSpacedRepetitionStats();
-  }
-
-  Future<void> _loadSpacedRepetitionStats() async {
+  Future<Map<String, dynamic>> _loadStats(String userId) async {
     try {
-      final user = Provider.of<UserModel?>(context, listen: false);
-      if (user != null) {
-        final stats = await _spacedRepetitionService.getStatistics(user.uid);
-        setState(() {
-          _spacedRepetitionStats = stats;
-        });
-      }
+      final dbService = LocalDatabaseService();
+      await dbService.init();
+      final srsService = SpacedRepetitionService(dbService.getSpacedRepetitionBox());
+      final firestoreService = FirestoreService();
+
+      final srsStats = await srsService.getStatistics(userId);
+      final firestoreStats = await firestoreService.streamAllItems(userId).first;
+
+      final summariesCount = firestoreStats['summaries']?.length ?? 0;
+      final quizzesCount = firestoreStats['quizzes']?.length ?? 0;
+      final flashcardsCount = firestoreStats['flashcards']?.length ?? 0;
+
+      final result = {
+        ...srsStats,
+        'summariesCount': summariesCount,
+        'quizzesCount': quizzesCount,
+        'flashcardsCount': flashcardsCount,
+      };
+      developer.log('Stats loaded successfully: $result', name: 'ProgressScreen');
+      return result;
     } catch (e, s) {
-      developer.log('Error loading spaced repetition stats: $e', name: 'my_app.progress', error: e, stackTrace: s);
+      developer.log('Error loading stats', name: 'ProgressScreen', error: e, stackTrace: s);
+      return {}; // Return empty map on error to avoid breaking the UI
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final userModel = Provider.of<UserModel?>(context);
+    if (_user == null) {
+      return const Center(child: Text('Please log in to view your progress.', style: TextStyle(color: Colors.white)));
+    }
+    
+    if (_statsFuture == null) {
+        return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
+    }
 
-    return userModel == null
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            child: Padding(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text('Progress', style: GoogleFonts.oswald(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _statsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
+          }
+          if (snapshot.hasError) {
+            developer.log('FutureBuilder error', name: 'ProgressScreen', error: snapshot.error);
+            return _buildEmptyState();
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          final stats = snapshot.data!;
+          return RefreshIndicator(
+            onRefresh: () async {
+              setState(() {
+                _statsFuture = _loadStats(_user!.uid);
+              });
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDateSelector(),
-                  const SizedBox(height: 20),
-                  _buildDailyStatsCard(),
-                  const SizedBox(height: 20),
-                  _buildSpacedRepetitionStatsCard(),
-                  const SizedBox(height: 20),
-                  _buildWeeklyChart(),
-                  const SizedBox(height: 20),
-                  _buildAchievementsSection(),
+                  _buildTopMetrics(stats),
+                  const SizedBox(height: 24),
+                  _buildReviewBanner(stats['dueForReviewCount'] ?? 0),
+                  const SizedBox(height: 24),
+                  _buildUpcomingReviews(stats['upcomingReviews'] ?? []),
                 ],
               ),
             ),
           );
-  }
-
-  Widget _buildDateSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () {
-            setState(() {
-              _selectedDate = _selectedDate.subtract(const Duration(days: 1));
-            });
-          },
-        ),
-        Text(
-          DateFormat('MMMM dd, yyyy').format(_selectedDate),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () {
-            if (_selectedDate.isBefore(DateTime.now())) {
-              setState(() {
-                _selectedDate = _selectedDate.add(const Duration(days: 1));
-              });
-            }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDailyStatsCard() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Today\'s Activity',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(Icons.article, 'Summaries', _dailyStats['summaries']?.toString() ?? '0'),
-                _buildStatItem(Icons.quiz, 'Quizzes', _dailyStats['quizzes']?.toString() ?? '0'),
-                _buildStatItem(Icons.style, 'Flashcards', _dailyStats['flashcards']?.toString() ?? '0'),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildQuizScoreBar(),
-          ],
-        ),
+        },
       ),
     );
   }
 
-  Widget _buildStatItem(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, size: 32, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSpacedRepetitionStatsCard() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Spaced Repetition',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  Icons.school, 
-                  'Total Cards', 
-                  _spacedRepetitionStats['totalCards']?.toString() ?? '0'
-                ),
-                _buildStatItem(
-                  Icons.access_time, 
-                  'Due Now', 
-                  _spacedRepetitionStats['dueCards']?.toString() ?? '0'
-                ),
-                _buildStatItem(
-                  Icons.check, 
-                  'Reviewed Today', 
-                  _spacedRepetitionStats['reviewedToday']?.toString() ?? '0'
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to spaced repetition screen
-                Navigator.pushNamed(context, '/spaced_repetition');
-              },
-              child: const Text('Start Review Session'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuizScoreBar() {
-    final score = _dailyStats['quizScore'] ?? 0.0;
+  Widget _buildTopMetrics(Map<String, dynamic> stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Quiz Performance',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        Text('Top Metrics', style: GoogleFonts.oswald(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildMetricChip('Total Summaries', (stats['summariesCount'] ?? 0).toString()),
+            const SizedBox(width: 10),
+            _buildMetricChip('Total Quizzes', (stats['quizzesCount'] ?? 0).toString()),
+          ],
         ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: score / 100,
-          backgroundColor: Colors.grey[300],
-          valueColor: AlwaysStoppedAnimation<Color>(
-            score >= 80
-                ? Colors.green
-                : score >= 60
-                    ? Colors.orange
-                    : Colors.red,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text('${score.toStringAsFixed(1)}% average score'),
+        const SizedBox(height: 10),
+        _buildMetricChip('Total Flashcards', (stats['flashcardsCount'] ?? 0).toString(), isFullWidth: true),
       ],
     );
   }
 
-  Widget _buildWeeklyChart() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Weekly Activity',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  Widget _buildMetricChip(String label, String value, {bool isFullWidth = false}) {
+    return Expanded(
+      flex: isFullWidth ? 2 : 1,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.grey[900],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text('$label: $value', style: GoogleFonts.roboto(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewBanner(int dueCount) {
+    return Container(
+      height: 150,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        image: const DecorationImage(
+          image: NetworkImage('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Freview_banner.png?alt=media&token=1a2a3b4b-5c6d-7e8f-9a0b-1c2d3e4f5a6b'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          gradient: LinearGradient(
+            colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+          ),
+        ),
+        child: Align(
+          alignment: Alignment.bottomLeft,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              '$dueCount items due for review',
+              style: GoogleFonts.oswald(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          '${_weeklyStats[group.x.toInt()]['count']} items',
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        );
-                      },
-                    ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingReviews(List<MapEntry<DateTime, int>> upcomingReviews) {
+    final weeklyData = _prepareWeeklyData(upcomingReviews);
+    final totalUpcoming = upcomingReviews.fold<int>(0, (sum, item) => sum + item.value);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Upcoming Reviews', style: GoogleFonts.oswald(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Text(totalUpcoming.toString(), style: GoogleFonts.oswald(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(width: 8),
+            Text('Next 7 Days', style: GoogleFonts.roboto(color: Colors.grey[400], fontSize: 16)),
+            const SizedBox(width: 8),
+            const Text('+10%', style: TextStyle(color: Colors.green, fontSize: 16, fontWeight: FontWeight.bold)), // Placeholder for percentage
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 150,
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              barGroups: weeklyData.map((data) {
+                final day = data.key;
+                final count = data.value;
+                return BarChartGroupData(
+                  x: day,
+                  barRods: [BarChartRodData(toY: count.toDouble(), color: Colors.grey[700], width: 20, borderRadius: const BorderRadius.all(Radius.circular(4)))],
+                );
+              }).toList(),
+              titlesData: FlTitlesData(
+                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      final day = DateFormat.E().format(DateTime.now().add(Duration(days: value.toInt())));
+                      return SideTitleWidget(axisSide: meta.axisSide, child: Text(day, style: TextStyle(color: Colors.grey[400], fontSize: 12)));
+                    },
+                    reservedSize: 30,
                   ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < _weeklyStats.length) {
-                            final date = _weeklyStats[index]['date'] as DateTime;
-                            return SideTitleWidget(
-                              axisSide: meta.axisSide,
-                              child: Text(
-                                DateFormat('E').format(date),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(
-                    show: false,
-                  ),
-                  barGroups: _weeklyStats.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final stat = entry.value;
-                    return BarChartGroupData(
-                      x: index,
-                      barRods: [
-                        BarChartRodData(
-                          toY: stat['count'].toDouble(),
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 16,
-                          borderRadius: BorderRadius.zero,
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  gridData: const FlGridData(show: false),
                 ),
               ),
+              gridData: const FlGridData(show: false),
+              borderData: FlBorderData(show: false),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
+  
+  List<MapEntry<int, int>> _prepareWeeklyData(List<MapEntry<DateTime, int>> upcomingReviews) {
+    final today = DateTime.now();
+    final weeklyData = List.generate(7, (i) => MapEntry(i, 0));
 
-  Widget _buildAchievementsSection() {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Achievements',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 100,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _buildAchievementCard(
-                    Icons.auto_stories,
-                    'First Summary',
-                    'Created your first summary',
-                    true,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildAchievementCard(
-                    Icons.quiz,
-                    'Quiz Master',
-                    'Completed 10 quizzes',
-                    false,
-                  ),
-                  const SizedBox(width: 16),
-                  _buildAchievementCard(
-                    Icons.style,
-                    'Flashcard Pro',
-                    'Created 50 flashcards',
-                    true,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    for (var review in upcomingReviews) {
+      final dayIndex = review.key.difference(today).inDays;
+      if (dayIndex >= 0 && dayIndex < 7) {
+        weeklyData[dayIndex] = MapEntry(dayIndex, weeklyData[dayIndex].value + review.value);
+      }
+    }
+    return weeklyData;
   }
 
-  Widget _buildAchievementCard(IconData icon, String title, String description, bool unlocked) {
-    return Card(
-      color: unlocked ? Theme.of(context).colorScheme.primaryContainer : Colors.grey[300],
-      child: SizedBox(
-        width: 120,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: unlocked ? Theme.of(context).colorScheme.primary : Colors.grey,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: unlocked ? Colors.black : Colors.grey,
-              ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.leaderboard_outlined, size: 80, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text('No Progress Data Yet', style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40.0),
+            child: Text(
+              'Complete some quizzes or flashcard reviews to see your progress here.',
+              style: GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 10,
-                color: unlocked ? Colors.grey[700] : Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
