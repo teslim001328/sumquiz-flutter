@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
@@ -74,6 +75,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     }
 
     setState(() => _isLoading = true);
+
     try {
       final summary = Summary(
         id: '', // Not needed for generation
@@ -81,18 +83,38 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         content: _textController.text,
         timestamp: Timestamp.now(),
       );
+
+      developer.log('Generating flashcards for content...', name: 'flashcards.generation');
       final cards = await _aiService.generateFlashcards(summary);
-      await _firestoreService.incrementUsage(userModel.uid, 'flashcards');
-      if (mounted) {
-        setState(() {
-          _flashcards = cards;
-          _isLoading = false;
-        });
+
+      if (cards.isNotEmpty) {
+        await _firestoreService.incrementUsage(userModel.uid, 'flashcards');
+        if (mounted) {
+          setState(() {
+            _flashcards = cards;
+            _isLoading = false;
+          });
+          developer.log('${cards.length} flashcards generated successfully.', name: 'flashcards.generation');
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not generate flashcards from the provided content. Please try again with different text.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          developer.log('AI service returned an empty list of flashcards.', name: 'flashcards.generation');
+        }
       }
-    } catch (e) {
+    } catch (e, s) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
         setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generating flashcards: $e')));
+        developer.log('Error generating flashcards', name: 'flashcards.generation', error: e, stackTrace: s);
       }
     }
   }
@@ -274,7 +296,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           image: const DecorationImage(
-              image: NetworkImage('https://images.unsplash.com/photo-1541829076-248995839PASTE_IMAGE_URL_HERE'),
+              image: NetworkImage('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Fflashcard_background.png?alt=media&token=954b52c0-8a21-492d-9467-f37648f81514'),
               fit: BoxFit.cover),
           boxShadow: [BoxShadow(color: Colors.black.withAlpha(77), blurRadius: 20, spreadRadius: 2)]),
       child: Column(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
@@ -17,21 +16,18 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.deepPurple,
+        seedColor: const Color.fromARGB(255, 183, 58, 173),
         brightness: Brightness.light,
       ),
-      textTheme: GoogleFonts.getTextTheme(
-        'Roboto',
-        const TextTheme(
+      textTheme: const TextTheme(
           displayLarge: TextStyle(fontSize: 57, fontWeight: FontWeight.bold),
           titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
           bodyMedium: TextStyle(fontSize: 14),
         ),
-      ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        titleTextStyle: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold),
+        titleTextStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -39,7 +35,7 @@ class AppTheme {
           backgroundColor: Colors.deepPurple,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w500),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -52,18 +48,15 @@ class AppTheme {
         seedColor: Colors.deepPurple,
         brightness: Brightness.dark,
       ),
-      textTheme: GoogleFonts.getTextTheme(
-        'Roboto',
-        const TextTheme(
+      textTheme: const TextTheme(
           displayLarge: TextStyle(fontSize: 57, fontWeight: FontWeight.bold),
           titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
           bodyMedium: TextStyle(fontSize: 14),
         ),
-      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.grey[900],
         foregroundColor: Colors.white,
-        titleTextStyle: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold),
+        titleTextStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -71,7 +64,7 @@ class AppTheme {
           backgroundColor: Colors.deepPurple.shade200,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: GoogleFonts.roboto(fontSize: 16, fontWeight: FontWeight.w500),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );

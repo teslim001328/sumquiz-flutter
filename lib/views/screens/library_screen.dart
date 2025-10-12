@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'dart:developer' as developer;
-import 'package:go_router/go_router.dart';
 
 import '../../models/library_item.dart';
 import '../../services/firestore_service.dart';
@@ -12,7 +10,6 @@ import '../../models/summary_model.dart';
 import '../../models/quiz_model.dart';
 import '../../models/flashcard_set.dart';
 import '../screens/edit_content_screen.dart';
-import '../../models/folder.dart';
 import 'summary_screen.dart';
 import 'quiz_screen.dart';
 import 'flashcards_screen.dart';

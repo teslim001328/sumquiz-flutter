@@ -21,6 +21,9 @@ import 'views/screens/library_screen.dart';
 import 'views/screens/progress_screen.dart';
 import 'views/screens/profile_screen.dart';
 import 'views/screens/main_screen.dart';
+import 'views/screens/summary_screen.dart';
+import 'views/screens/flashcards_screen.dart';
+import 'views/screens/quiz_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,6 +90,18 @@ final GoRouter _router = GoRouter(
           builder: (context, state) => const ProfileScreen(),
         ),
       ],
+    ),
+    GoRoute(
+      path: '/summary',
+      builder: (context, state) => const SummaryScreen(),
+    ),
+    GoRoute(
+      path: '/flashcards',
+      builder: (context, state) => const FlashcardsScreen(),
+    ),
+    GoRoute(
+      path: '/quiz',
+      builder: (context, state) => const QuizScreen(),
     ),
   ],
   redirect: (context, state) {
