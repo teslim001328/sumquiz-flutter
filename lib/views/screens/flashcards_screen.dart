@@ -166,6 +166,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           _buildContent(),
           if (_isLoading)
@@ -254,39 +255,45 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
   }
 
   Widget _buildReviewInterface() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            automaticallyImplyLeading: false,
-            title: Column(
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          children: [
+            Row(
               children: [
-                const Text('Review', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text('Question ${_currentIndex + 1}/${_flashcards.length}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: _resetToCreation,
+                ),
+                const Spacer(),
+                Column(
+                  children: [
+                    const Text('Review', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text('Question ${_currentIndex + 1}/${_flashcards.length}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                  ],
+                ),
+                const Spacer(),
+                const SizedBox(width: 48), // To balance the close button
               ],
             ),
-            leading: IconButton(icon: const Icon(Icons.close), onPressed: _resetToCreation),
-          ),
-          Expanded(
-            child: CardSwiper(
-              controller: _swiperController,
-              cardsCount: _flashcards.length,
-              onSwipe: _onSwipe,
-              padding: const EdgeInsets.symmetric(vertical: 30.0),
-              cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
-                final card = _flashcards[index];
-                return FlipCard(
-                  front: _buildCardSide(card.question, isFront: true),
-                  back: _buildCardSide(card.answer, isFront: false, cardIndex: index),
-                );
-              },
+            Expanded(
+              child: CardSwiper(
+                controller: _swiperController,
+                cardsCount: _flashcards.length,
+                onSwipe: _onSwipe,
+                padding: const EdgeInsets.symmetric(vertical: 30.0),
+                cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
+                  final card = _flashcards[index];
+                  return FlipCard(
+                    front: _buildCardSide(card.question, isFront: true),
+                    back: _buildCardSide(card.answer, isFront: false, cardIndex: index),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -305,7 +312,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
               child: Center(
                   child: Padding(
                       padding: const EdgeInsets.all(24.0),
-                      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold, height: 1.4))))),
+                      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, height: 1.4))))),
           if (!isFront)
             Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -319,7 +326,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           else
             const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Text("Tap to Flip", style: TextStyle(color: Colors.black54, fontStyle: FontStyle.italic))),
+                child: Text("Tap to Flip", style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic))),
         ],
       ),
     );

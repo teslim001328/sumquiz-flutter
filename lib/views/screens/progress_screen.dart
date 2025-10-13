@@ -56,14 +56,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
       final srsStatsFuture = srsService.getStatistics(userId);
       final firestoreStatsFuture = firestoreService.streamAllItems(userId).first;
 
-      final [srsStats, firestoreStats] = await Future.wait([
-        srsStatsFuture,
-        firestoreStatsFuture,
-      ]);
+      final results = await Future.wait([srsStatsFuture, firestoreStatsFuture]);
+      final srsStats = results[0];
+      final firestoreStats = results[1] as Map<String, List<dynamic>>;
 
-      final summariesCount = (firestoreStats['summaries'] as List?)?.length ?? 0;
-      final quizzesCount = (firestoreStats['quizzes'] as List?)?.length ?? 0;
-      final flashcardsCount = (firestoreStats['flashcards'] as List?)?.length ?? 0;
+      final summariesCount = firestoreStats['summaries']?.length ?? 0;
+      final quizzesCount = firestoreStats['quizzes']?.length ?? 0;
+      final flashcardsCount = firestoreStats['flashcards']?.length ?? 0;
 
       final result = {
         ...srsStats,
@@ -104,7 +103,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
           }
           if (snapshot.hasError) {
             developer.log('FutureBuilder error', name: 'ProgressScreen', error: snapshot.error, stackTrace: snapshot.stackTrace);
-            return _buildErrorState(user.uid);
+            return _buildErrorState(user.uid, snapshot.error!);
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return _buildEmptyState(user.uid);
@@ -125,9 +124,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 children: [
                   _buildTopMetrics(stats),
                   const SizedBox(height: 24),
-                  _buildReviewBanner(stats['dueForReviewCount'] ?? 0),
+                  _buildReviewBanner(stats['dueForReviewCount'] as int? ?? 0),
                   const SizedBox(height: 24),
-                  _buildUpcomingReviews(stats['upcomingReviews'] ?? []),
+                  _buildUpcomingReviews(stats['upcomingReviews'] as List<MapEntry<DateTime, int>>? ?? []),
                 ],
               ),
             ),
@@ -137,19 +136,24 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
   
-  Widget _buildErrorState(String userId) {
+  Widget _buildErrorState(String userId, Object error) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 60),
-          const SizedBox(height: 16),
-          const Text('Something went wrong.', style: TextStyle(color: Colors.white, fontSize: 18)),
-          const SizedBox(height: 8),
-          Text('Could not load your progress. Please try again later.', style: TextStyle(color: Colors.grey[400]), textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-          ElevatedButton(onPressed: () => setState(() => _statsFuture = _loadStats(userId)), child: const Text('Retry'))
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 60),
+            const SizedBox(height: 16),
+            const Text('Something went wrong.', style: TextStyle(color: Colors.white, fontSize: 18)),
+            const SizedBox(height: 8),
+            Text('Could not load your progress. Please try again later.', style: TextStyle(color: Colors.grey[400]), textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            Text('Details: ${error.toString()}', style: TextStyle(color: Colors.grey[600]), textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            ElevatedButton(onPressed: () => setState(() => _statsFuture = _loadStats(userId)), child: const Text('Retry'))
+          ],
+        ),
       ),
     );
   }
@@ -206,7 +210,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           gradient: LinearGradient(
-            colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+            colors: [const Color.fromRGBO(0, 0, 0, 0.7), Colors.transparent],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
           ),
@@ -220,7 +224,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$dueCount items', style: GoogleFonts.oswald(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                Text('Due for review today', style: GoogleFonts.roboto(color: Colors.white.withOpacity(0.9), fontSize: 16)),
+                Text('Due for review today', style: GoogleFonts.roboto(color: Colors.white.withOpacity(230/255), fontSize: 16)),
               ],
             ),
           ),
@@ -269,7 +273,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                     getTitlesWidget: (value, meta) {
                       final now = DateTime.now();
                       final day = now.add(Duration(days: value.toInt()));
-                      return SideTitleWidget(axisSide: meta.axisSide, child: Text(DateFormat.E().format(day), style: TextStyle(color: Colors.grey[500], fontSize: 12)));
+                      return Text(DateFormat.E().format(day), style: TextStyle(color: Colors.grey[500], fontSize: 12));
                     },
                     reservedSize: 30,
                   ),

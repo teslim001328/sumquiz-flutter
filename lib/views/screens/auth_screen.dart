@@ -1,12 +1,12 @@
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:myapp/services/auth_service.dart';
 
 enum AuthMode { Login, SignUp }
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final AuthService authService;
+
+  const AuthScreen({super.key, required this.authService});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -18,7 +18,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
   AuthMode _authMode = AuthMode.Login;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -39,62 +38,36 @@ class _AuthScreenState extends State<AuthScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final authService = Provider.of<AuthService>(context, listen: false);
-
     try {
       if (_authMode == AuthMode.Login) {
-        await authService.signInWithEmailAndPassword(
+        await widget.authService.signInWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
       } else {
-        await authService.signUpWithEmailAndPassword(
+        await widget.authService.signUpWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _fullNameController.text.trim(),
         );
       }
-      // Navigation will be handled by the AuthWrapper
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Authentication Failed: ${e.toString()}')),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
   Future<void> _googleSignIn() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final authService = Provider.of<AuthService>(context, listen: false);
-
     try {
-      await authService.signInWithGoogle();
-      // Navigation will be handled by the AuthWrapper
+      await widget.authService.signInWithGoogle();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Google Sign-In Failed: ${e.toString()}')),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
@@ -291,23 +264,14 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        onPressed: _isLoading ? null : onPressed,
-        child: _isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                ),
-              )
-            : Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+        onPressed: onPressed,
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
@@ -323,24 +287,15 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        onPressed: _isLoading ? null : _googleSignIn,
-        child: _isLoading
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Text(
-                'Continue with Google',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+        onPressed: _googleSignIn,
+        child: const Text(
+          'Continue with Google',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }

@@ -1,125 +1,65 @@
-import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 import 'firebase_options.dart';
+
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
-import 'services/upgrade_service.dart';
 import 'services/local_database_service.dart';
-import 'views/screens/auth_wrapper.dart';
-import 'models/user_model.dart';
-import 'views/theme.dart';
+import 'services/upgrade_service.dart';
+
+import 'views/screens/auth_screen.dart';
 import 'views/screens/home_screen.dart';
-import 'views/screens/ai_tools_screen.dart';
-import 'views/screens/library_screen.dart';
-import 'views/screens/progress_screen.dart';
 import 'views/screens/profile_screen.dart';
-import 'views/screens/main_screen.dart';
-import 'views/screens/summary_screen.dart';
-import 'views/screens/flashcards_screen.dart';
-import 'views/screens/quiz_screen.dart';
+import 'views/screens/library_screen.dart';
+import 'views/screens/settings_screen.dart';
+import 'views/screens/spaced_repetition_screen.dart';
+
+import 'models/user_model.dart';
+import 'models/local_summary.dart';
+import 'models/local_quiz.dart';
+import 'models/local_quiz_question.dart';
+import 'models/local_flashcard.dart';
+import 'models/local_flashcard_set.dart';
+import 'models/spaced_repetition.dart';
+import 'views/theme.dart';
+import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await LocalDatabaseService().init();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Activate App Check
-  try {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug,
-      webProvider: ReCaptchaV3Provider('recaptcha-v3-site-key'),
-    );
-    developer.log('Firebase App Check activated.', name: 'com.example.myapp.main');
-    FirebaseAppCheck.instance.onTokenChange.listen((token) {
-      developer.log('App Check Token: $token', name: 'com.example.myapp.app_check');
-    });
-  } catch (e) {
-    developer.log('Error activating Firebase App Check: $e', name: 'com.example.myapp.main');
-  }
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.debug,
+  );
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(LocalSummaryAdapter());
+  Hive.registerAdapter(LocalQuizAdapter());
+  Hive.registerAdapter(LocalQuizQuestionAdapter());
+  Hive.registerAdapter(LocalFlashcardAdapter());
+  Hive.registerAdapter(LocalFlashcardSetAdapter());
+  Hive.registerAdapter(SpacedRepetitionItemAdapter());
+  
+  await Hive.openBox<LocalSummary>('summaries');
+  await Hive.openBox<LocalQuiz>('quizzes');
+  await Hive.openBox<LocalFlashcardSet>('flashcard_sets');
+  await Hive.openBox<SpacedRepetitionItem>('spaced_repetition');
+
 
   final authService = AuthService(FirebaseAuth.instance);
 
-  FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
   runApp(MyApp(authService: authService));
 }
-
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-
-final GoRouter _router = GoRouter(
-  navigatorKey: _rootNavigatorKey,
-  initialLocation: '/',
-  routes: [
-    GoRoute(
-      path: '/auth',
-      builder: (context, state) => const AuthWrapper(),
-    ),
-    ShellRoute(
-      builder: (context, state, child) {
-        return const MainScreen();
-      },
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const HomeScreen(),
-        ),
-        GoRoute(
-          path: '/create',
-          builder: (context, state) => const AiToolsScreen(),
-        ),
-        GoRoute(
-          path: '/library',
-          builder: (context, state) => const LibraryScreen(),
-        ),
-        GoRoute(
-          path: '/progress',
-          builder: (context, state) => const ProgressScreen(),
-        ),
-        GoRoute(
-          path: '/profile',
-          builder: (context, state) => const ProfileScreen(),
-        ),
-      ],
-    ),
-    GoRoute(
-      path: '/summary',
-      builder: (context, state) => const SummaryScreen(),
-    ),
-    GoRoute(
-      path: '/flashcards',
-      builder: (context, state) => const FlashcardsScreen(),
-    ),
-    GoRoute(
-      path: '/quiz',
-      builder: (context, state) => const QuizScreen(),
-    ),
-  ],
-  redirect: (context, state) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final bool loggedIn = authService.currentUser != null;
-    final bool loggingIn = state.matchedLocation == '/auth';
-
-    if (!loggedIn) {
-      return '/auth';
-    }
-
-    if (loggingIn) {
-      return '/';
-    }
-
-    return null;
-  },
-);
 
 class MyApp extends StatelessWidget {
   final AuthService authService;
@@ -128,6 +68,43 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final GoRouter router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const HomeScreen(),
+          redirect: (context, state) {
+            final user = Provider.of<User?>(context, listen: false);
+            if (user == null) {
+              return '/auth';
+            }
+            return null;
+          },
+        ),
+        GoRoute(
+          path: '/auth',
+          builder: (context, state) => AuthScreen(authService: authService),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/library',
+          builder: (context, state) => const LibraryScreen(),
+        ),
+         GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/spaced-repetition',
+          builder: (context, state) => const SpacedRepetitionScreen(),
+        ),
+      ],
+    );
+
     return MultiProvider(
       providers: [
         Provider<AuthService>.value(value: authService),
@@ -160,7 +137,7 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
-            routerConfig: _router,
+            routerConfig: router,
             debugShowCheckedModeBanner: false,
           );
         },

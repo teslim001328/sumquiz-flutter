@@ -23,20 +23,11 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -51,12 +42,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBXy6tSjdtu5ukcSDHo04mng3RtyKANTFk',
-    appId: '1:370380317647:web:8b8a9331bcd7e2b1d828ba',
+    appId: '1:370380317647:web:7941890cfdcd4ab3d828ba',
     messagingSenderId: '370380317647',
     projectId: 'sumquiz-f56f3',
     authDomain: 'sumquiz-f56f3.firebaseapp.com',
     storageBucket: 'sumquiz-f56f3.firebasestorage.app',
-    measurementId: 'G-VWETS9Y6QB',
+    measurementId: 'G-SFP6KGVPLF',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -67,4 +58,33 @@ class DefaultFirebaseOptions {
     storageBucket: 'sumquiz-f56f3.firebasestorage.app',
   );
 
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyCOkIaXsWFxYLMbWlI5f7v4qgkHtDxLOIU',
+    appId: '1:370380317647:ios:1c4311ac30d82191d828ba',
+    messagingSenderId: '370380317647',
+    projectId: 'sumquiz-f56f3',
+    storageBucket: 'sumquiz-f56f3.firebasestorage.app',
+    iosClientId: '370380317647-35hovctgu028i1ahvmd8t7fpcp3mcj1t.apps.googleusercontent.com',
+    iosBundleId: 'com.example.myapp',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyCOkIaXsWFxYLMbWlI5f7v4qgkHtDxLOIU',
+    appId: '1:370380317647:ios:1c4311ac30d82191d828ba',
+    messagingSenderId: '370380317647',
+    projectId: 'sumquiz-f56f3',
+    storageBucket: 'sumquiz-f56f3.firebasestorage.app',
+    iosClientId: '370380317647-35hovctgu028i1ahvmd8t7fpcp3mcj1t.apps.googleusercontent.com',
+    iosBundleId: 'com.example.myapp',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBXy6tSjdtu5ukcSDHo04mng3RtyKANTFk',
+    appId: '1:370380317647:web:7941890cfdcd4ab3d828ba',
+    messagingSenderId: '370380317647',
+    projectId: 'sumquiz-f56f3',
+    authDomain: 'sumquiz-f56f3.firebaseapp.com',
+    storageBucket: 'sumquiz-f56f3.firebasestorage.app',
+    measurementId: 'G-SFP6KGVPLF',
+  );
 }

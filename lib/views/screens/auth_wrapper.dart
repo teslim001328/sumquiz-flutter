@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:myapp/models/user_model.dart';
+import 'package:myapp/services/auth_service.dart';
 import 'package:myapp/views/screens/auth_screen.dart';
 import 'package:myapp/views/screens/main_screen.dart';
 
@@ -12,9 +13,10 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final firebaseUser = Provider.of<User?>(context);
     final userModel = Provider.of<UserModel?>(context);
+    final authService = Provider.of<AuthService>(context, listen: false);
 
     if (firebaseUser == null) {
-      return const AuthScreen();
+      return AuthScreen(authService: authService);
     } else {
       if (userModel == null) {
         return const Scaffold(
