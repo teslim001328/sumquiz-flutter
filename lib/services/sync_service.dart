@@ -26,21 +26,16 @@ class SyncService {
     if (user == null) return;
 
     try {
-      // Sync summaries
       await _syncSummaries(user.uid);
-      
-      // Sync quizzes
       await _syncQuizzes(user.uid);
-      
-      // Sync flashcard sets
       await _syncFlashcardSets(user.uid);
     } catch (e, s) {
-      developer.log('Error during sync', name: 'SyncService', error: e, stackTrace: s);
+      developer.log('Error during sync',
+          name: 'SyncService', error: e, stackTrace: s);
     }
   }
 
   Future<void> _syncSummaries(String userId) async {
-    // Get all unsynced summaries
     final localSummaries = await _localDb.getAllSummaries(userId);
     final unsyncedSummaries = localSummaries.where((s) => !s.isSynced).toList();
 
@@ -49,11 +44,12 @@ class SyncService {
         final summary = Summary(
           id: localSummary.id,
           userId: userId,
+          title: localSummary.title,
           content: localSummary.content,
+          tags: localSummary.tags,
           timestamp: Timestamp.fromDate(localSummary.timestamp),
         );
 
-        // Save to Firestore
         await _firestore
             .collection('users')
             .doc(userId)
@@ -61,14 +57,13 @@ class SyncService {
             .doc(localSummary.id)
             .set(summary.toFirestore());
 
-        // Mark as synced locally
         await _localDb.updateSummarySyncStatus(localSummary.id, true);
       } catch (e, s) {
-        developer.log('Error syncing summary ${localSummary.id}', name: 'SyncService', error: e, stackTrace: s);
+        developer.log('Error syncing summary ${localSummary.id}',
+            name: 'SyncService', error: e, stackTrace: s);
       }
     }
 
-    // Get summaries from Firestore that don't exist locally
     final firestoreSummaries = await _firestore
         .collection('users')
         .doc(userId)
@@ -78,22 +73,25 @@ class SyncService {
     for (final doc in firestoreSummaries.docs) {
       final localSummary = await _localDb.getSummary(doc.id);
       if (localSummary == null) {
-        // Summary exists in Firestore but not locally, download it
         final summary = Summary.fromFirestore(doc);
         final newLocalSummary = LocalSummary(
           id: summary.id,
+          userId: userId,
+          title: summary.title,
           content: summary.content,
+          tags: summary.tags,
           timestamp: summary.timestamp.toDate(),
           isSynced: true,
-          userId: userId,
         );
         await _localDb.saveSummary(newLocalSummary);
       } else {
-        // Check if Firestore version is newer
         final firestoreSummary = Summary.fromFirestore(doc);
-        if (firestoreSummary.timestamp.toDate().isAfter(localSummary.timestamp)) {
-          // Update local version
+        if (firestoreSummary.timestamp
+            .toDate()
+            .isAfter(localSummary.timestamp)) {
+          localSummary.title = firestoreSummary.title;
           localSummary.content = firestoreSummary.content;
+          localSummary.tags = firestoreSummary.tags;
           localSummary.timestamp = firestoreSummary.timestamp.toDate();
           localSummary.isSynced = true;
           await _localDb.saveSummary(localSummary);
@@ -103,7 +101,6 @@ class SyncService {
   }
 
   Future<void> _syncQuizzes(String userId) async {
-    // Get all unsynced quizzes
     final localQuizzes = await _localDb.getAllQuizzes(userId);
     final unsyncedQuizzes = localQuizzes.where((q) => !q.isSynced).toList();
 
@@ -111,6 +108,7 @@ class SyncService {
       try {
         final quiz = Quiz(
           id: localQuiz.id,
+          userId: userId,
           title: localQuiz.title,
           questions: localQuiz.questions
               .map((q) => QuizQuestion(
@@ -122,7 +120,6 @@ class SyncService {
           timestamp: Timestamp.fromDate(localQuiz.timestamp),
         );
 
-        // Save to Firestore
         await _firestore
             .collection('users')
             .doc(userId)
@@ -130,14 +127,13 @@ class SyncService {
             .doc(localQuiz.id)
             .set(quiz.toFirestore());
 
-        // Mark as synced locally
         await _localDb.updateQuizSyncStatus(localQuiz.id, true);
       } catch (e, s) {
-        developer.log('Error syncing quiz ${localQuiz.id}', name: 'SyncService', error: e, stackTrace: s);
+        developer.log('Error syncing quiz ${localQuiz.id}',
+            name: 'SyncService', error: e, stackTrace: s);
       }
     }
 
-    // Get quizzes from Firestore that don't exist locally
     final firestoreQuizzes = await _firestore
         .collection('users')
         .doc(userId)
@@ -147,10 +143,10 @@ class SyncService {
     for (final doc in firestoreQuizzes.docs) {
       final localQuiz = await _localDb.getQuiz(doc.id);
       if (localQuiz == null) {
-        // Quiz exists in Firestore but not locally, download it
         final quiz = Quiz.fromFirestore(doc);
         final newLocalQuiz = LocalQuiz(
           id: quiz.id,
+          userId: userId,
           title: quiz.title,
           questions: quiz.questions
               .map((q) => LocalQuizQuestion(
@@ -161,14 +157,11 @@ class SyncService {
               .toList(),
           timestamp: quiz.timestamp.toDate(),
           isSynced: true,
-          userId: userId,
         );
         await _localDb.saveQuiz(newLocalQuiz);
       } else {
-        // Check if Firestore version is newer
         final firestoreQuiz = Quiz.fromFirestore(doc);
         if (firestoreQuiz.timestamp.toDate().isAfter(localQuiz.timestamp)) {
-          // Update local version
           localQuiz.title = firestoreQuiz.title;
           localQuiz.questions = firestoreQuiz.questions
               .map((q) => LocalQuizQuestion(
@@ -186,9 +179,9 @@ class SyncService {
   }
 
   Future<void> _syncFlashcardSets(String userId) async {
-    // Get all unsynced flashcard sets
     final localFlashcardSets = await _localDb.getAllFlashcardSets(userId);
-    final unsyncedFlashcardSets = localFlashcardSets.where((fs) => !fs.isSynced).toList();
+    final unsyncedFlashcardSets =
+        localFlashcardSets.where((fs) => !fs.isSynced).toList();
 
     for (final localFlashcardSet in unsyncedFlashcardSets) {
       try {
@@ -204,7 +197,6 @@ class SyncService {
           timestamp: Timestamp.fromDate(localFlashcardSet.timestamp),
         );
 
-        // Save to Firestore
         await _firestore
             .collection('users')
             .doc(userId)
@@ -212,14 +204,13 @@ class SyncService {
             .doc(localFlashcardSet.id)
             .set(flashcardSet.toFirestore());
 
-        // Mark as synced locally
         await _localDb.updateFlashcardSetSyncStatus(localFlashcardSet.id, true);
       } catch (e, s) {
-        developer.log('Error syncing flashcard set ${localFlashcardSet.id}', name: 'SyncService', error: e, stackTrace: s);
+        developer.log('Error syncing flashcard set ${localFlashcardSet.id}',
+            name: 'SyncService', error: e, stackTrace: s);
       }
     }
 
-    // Get flashcard sets from Firestore that don't exist locally
     final firestoreFlashcardSets = await _firestore
         .collection('users')
         .doc(userId)
@@ -229,10 +220,10 @@ class SyncService {
     for (final doc in firestoreFlashcardSets.docs) {
       final localFlashcardSet = await _localDb.getFlashcardSet(doc.id);
       if (localFlashcardSet == null) {
-        // Flashcard set exists in Firestore but not locally, download it
         final flashcardSet = FlashcardSet.fromFirestore(doc);
         final newLocalFlashcardSet = LocalFlashcardSet(
           id: flashcardSet.id,
+          userId: userId,
           title: flashcardSet.title,
           flashcards: flashcardSet.flashcards
               .map((f) => LocalFlashcard(
@@ -242,14 +233,13 @@ class SyncService {
               .toList(),
           timestamp: flashcardSet.timestamp.toDate(),
           isSynced: true,
-          userId: userId,
         );
         await _localDb.saveFlashcardSet(newLocalFlashcardSet);
       } else {
-        // Check if Firestore version is newer
         final firestoreFlashcardSet = FlashcardSet.fromFirestore(doc);
-        if (firestoreFlashcardSet.timestamp.toDate().isAfter(localFlashcardSet.timestamp)) {
-          // Update local version
+        if (firestoreFlashcardSet.timestamp
+            .toDate()
+            .isAfter(localFlashcardSet.timestamp)) {
           localFlashcardSet.title = firestoreFlashcardSet.title;
           localFlashcardSet.flashcards = firestoreFlashcardSet.flashcards
               .map((f) => LocalFlashcard(
@@ -257,7 +247,8 @@ class SyncService {
                     answer: f.answer,
                   ))
               .toList();
-          localFlashcardSet.timestamp = firestoreFlashcardSet.timestamp.toDate();
+          localFlashcardSet.timestamp =
+              firestoreFlashcardSet.timestamp.toDate();
           localFlashcardSet.isSynced = true;
           await _localDb.saveFlashcardSet(localFlashcardSet);
         }

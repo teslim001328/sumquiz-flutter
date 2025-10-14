@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '370380317647',
     projectId: 'sumquiz-f56f3',
     storageBucket: 'sumquiz-f56f3.firebasestorage.app',
-    iosClientId: '370380317647-35hovctgu028i1ahvmd8t7fpcp3mcj1t.apps.googleusercontent.com',
+    iosClientId:
+        '370380317647-35hovctgu028i1ahvmd8t7fpcp3mcj1t.apps.googleusercontent.com',
     iosBundleId: 'com.example.myapp',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '370380317647',
     projectId: 'sumquiz-f56f3',
     storageBucket: 'sumquiz-f56f3.firebasestorage.app',
-    iosClientId: '370380317647-35hovctgu028i1ahvmd8t7fpcp3mcj1t.apps.googleusercontent.com',
+    iosClientId:
+        '370380317647-35hovctgu028i1ahvmd8t7fpcp3mcj1t.apps.googleusercontent.com',
     iosBundleId: 'com.example.myapp',
   );
 

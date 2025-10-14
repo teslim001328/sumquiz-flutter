@@ -5,6 +5,7 @@ import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class MockAuthService extends Mock implements AuthService {}
+
 class MockUser extends Mock implements User {}
 
 void main() {

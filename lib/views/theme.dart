@@ -16,7 +16,8 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.grey[200],
         foregroundColor: Colors.black,
-        titleTextStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        titleTextStyle:
+            const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -45,7 +46,8 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.grey[900],
         foregroundColor: Colors.white,
-        titleTextStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        titleTextStyle:
+            const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

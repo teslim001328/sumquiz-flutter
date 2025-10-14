@@ -25,7 +25,8 @@ class PdfExportService {
     page.graphics.drawString(
       summary.content,
       font,
-      bounds: Rect.fromLTWH(0, 60, page.getClientSize().width, page.getClientSize().height - 60),
+      bounds: Rect.fromLTWH(
+          0, 60, page.getClientSize().width, page.getClientSize().height - 60),
     );
 
     final bytes = await document.save();
@@ -36,7 +37,7 @@ class PdfExportService {
 
   Future<String> exportQuiz(LocalQuiz quiz) async {
     final PdfDocument document = PdfDocument();
-    
+
     for (var i = 0; i < quiz.questions.length; i++) {
       final question = quiz.questions[i];
       final PdfPage page = document.pages.add();
@@ -44,31 +45,22 @@ class PdfExportService {
       final font = PdfStandardFont(PdfFontFamily.helvetica, 12);
       final questionFont = PdfStandardFont(PdfFontFamily.helvetica, 16);
 
-      page.graphics.drawString(
-        'Question ${i + 1}:', 
-        questionFont,
-        bounds: Rect.fromLTWH(0, 0, page.getClientSize().width, 30)
-      );
-      page.graphics.drawString(
-        question.question, 
-        questionFont, 
-        bounds: Rect.fromLTWH(0, 30, page.getClientSize().width, 60)
-      );
+      page.graphics.drawString('Question ${i + 1}:', questionFont,
+          bounds: Rect.fromLTWH(0, 0, page.getClientSize().width, 30));
+      page.graphics.drawString(question.question, questionFont,
+          bounds: Rect.fromLTWH(0, 30, page.getClientSize().width, 60));
 
       double y = 100;
       for (var j = 0; j < question.options.length; j++) {
         final option = question.options[j];
         final isCorrect = option == question.correctAnswer;
         final optionText = '${String.fromCharCode(65 + j)}. $option';
-        
+
         final graphics = page.graphics;
 
-        graphics.drawString(
-          optionText, 
-          font, 
-          bounds: Rect.fromLTWH(20, y, page.getClientSize().width - 20, 20),
-          brush: isCorrect ? PdfBrushes.green : PdfBrushes.black
-        );
+        graphics.drawString(optionText, font,
+            bounds: Rect.fromLTWH(20, y, page.getClientSize().width - 20, 20),
+            brush: isCorrect ? PdfBrushes.green : PdfBrushes.black);
         y += 25;
       }
     }
@@ -88,28 +80,16 @@ class PdfExportService {
       final termFont = PdfStandardFont(PdfFontFamily.helvetica, 18);
 
       // Draw term
-      page.graphics.drawString(
-        'Term:', 
-        termFont, 
-        bounds: Rect.fromLTWH(0, 0, page.getClientSize().width, 30)
-      );
-      page.graphics.drawString(
-        flashcard.question, 
-        termFont, 
-        bounds: Rect.fromLTWH(0, 30, page.getClientSize().width, 100)
-      );
-      
+      page.graphics.drawString('Term:', termFont,
+          bounds: Rect.fromLTWH(0, 0, page.getClientSize().width, 30));
+      page.graphics.drawString(flashcard.question, termFont,
+          bounds: Rect.fromLTWH(0, 30, page.getClientSize().width, 100));
+
       // Draw definition
-      page.graphics.drawString(
-        'Definition:', 
-        font, 
-        bounds: Rect.fromLTWH(0, 150, page.getClientSize().width, 30)
-      );
-      page.graphics.drawString(
-        flashcard.answer, 
-        font, 
-        bounds: Rect.fromLTWH(0, 180, page.getClientSize().width, 200)
-      );
+      page.graphics.drawString('Definition:', font,
+          bounds: Rect.fromLTWH(0, 150, page.getClientSize().width, 30));
+      page.graphics.drawString(flashcard.answer, font,
+          bounds: Rect.fromLTWH(0, 180, page.getClientSize().width, 200));
     }
 
     final bytes = await document.save();

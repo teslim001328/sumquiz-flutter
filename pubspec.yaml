@@ -23,6 +23,7 @@ dependencies:
   intl: ^0.20.2
   syncfusion_flutter_core: ^31.1.19
   syncfusion_flutter_pdf: ^31.1.19
+  image_picker: ^1.0.4
 
 
   # Unchanged dependencies

@@ -67,7 +67,8 @@ class SummaryScreenState extends State<SummaryScreen> {
         });
       }
     } catch (e, s) {
-      developer.log('Error picking or reading PDF', name: 'my_app.summary', error: e, stackTrace: s);
+      developer.log('Error picking or reading PDF',
+          name: 'my_app.summary', error: e, stackTrace: s);
       setState(() {
         _state = SummaryState.error;
         _errorMessage = "Error picking or reading PDF: $e";
@@ -80,12 +81,14 @@ class SummaryScreenState extends State<SummaryScreen> {
     if (userModel == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not available. Please log in again.')),
+        const SnackBar(
+            content: Text('User not available. Please log in again.')),
       );
       return;
     }
 
-    final canGenerate = await _firestoreService.canGenerate(userModel.uid, 'summaries');
+    final canGenerate =
+        await _firestoreService.canGenerate(userModel.uid, 'summaries');
     if (!canGenerate) {
       if (mounted) _showUpgradeDialog();
       return;
@@ -94,8 +97,12 @@ class SummaryScreenState extends State<SummaryScreen> {
     setState(() => _state = SummaryState.loading);
 
     try {
-      final summaryJsonString = await _aiService.generateSummary(_textController.text, pdfBytes: _pdfBytes);
-      final summaryData = json.decode(summaryJsonString) as Map<String, dynamic>;
+      final summaryJsonString = await _aiService.generateSummary(
+        _textController.text,
+        pdfBytes: _pdfBytes,
+      );
+      final summaryData =
+          json.decode(summaryJsonString) as Map<String, dynamic>;
 
       if (summaryData.containsKey('error')) {
         setState(() {
@@ -103,7 +110,7 @@ class SummaryScreenState extends State<SummaryScreen> {
           _errorMessage = summaryData['error'];
         });
       } else {
-        await _firestoreService.incrementUsage(userModel.uid, 'summaries');
+        _firestoreService.incrementUsage(userModel.uid, 'summaries');
         setState(() {
           _summaryTitle = summaryData['title'] ?? 'Summary';
           _summaryContent = summaryData['content'] ?? '';
@@ -112,7 +119,12 @@ class SummaryScreenState extends State<SummaryScreen> {
         });
       }
     } catch (e, s) {
-      developer.log('An unexpected error occurred during summary generation', name: 'my_app.summary', error: e, stackTrace: s);
+      developer.log(
+        'An unexpected error occurred during summary generation',
+        name: 'my_app.summary',
+        error: e,
+        stackTrace: s,
+      );
       setState(() {
         _state = SummaryState.error;
         _errorMessage = "An unexpected error occurred. Please try again.";
@@ -138,7 +150,10 @@ class SummaryScreenState extends State<SummaryScreen> {
     Clipboard.setData(ClipboardData(text: _summaryContent));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Summary content copied to clipboard!'), backgroundColor: Colors.green),
+      const SnackBar(
+        content: Text('Summary content copied to clipboard!'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -157,13 +172,20 @@ class SummaryScreenState extends State<SummaryScreen> {
         await _firestoreService.addSummary(user.uid, summaryToSave);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Summary saved to library!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Summary saved to library!'),
+            backgroundColor: Colors.green,
+          ),
         );
       } catch (e, s) {
-        developer.log('Error saving summary', name: 'my_app.summary', error: e, stackTrace: s);
+        developer.log('Error saving summary',
+            name: 'my_app.summary', error: e, stackTrace: s);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error saving summary.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Error saving summary.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -176,16 +198,30 @@ class SummaryScreenState extends State<SummaryScreen> {
     setState(() => _isGeneratingQuiz = true);
 
     try {
-      final summary = Summary(id: '', userId: user.uid, title: _summaryTitle, content: _summaryContent, tags: _summaryTags, timestamp: Timestamp.now());
+      final summary = Summary(
+        id: '',
+        userId: user.uid,
+        title: _summaryTitle,
+        content: _summaryContent,
+        tags: _summaryTags,
+        timestamp: Timestamp.now(),
+      );
       final quiz = await _aiService.generateQuizFromSummary(summary);
       if (mounted) {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => QuizScreen(quiz: quiz)));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => QuizScreen(quiz: quiz)),
+        );
       }
     } catch (e, s) {
-      developer.log('Error generating quiz', name: 'my_app.summary', error: e, stackTrace: s);
+      developer.log('Error generating quiz',
+          name: 'my_app.summary', error: e, stackTrace: s);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error generating quiz.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Error generating quiz.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -208,13 +244,15 @@ class SummaryScreenState extends State<SummaryScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: _buildBody(),
           ),
           if (_state == SummaryState.loading || _isGeneratingQuiz)
             Container(
               color: Colors.black.withOpacity(0.5),
-              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+              child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white)),
             ),
         ],
       ),
@@ -237,7 +275,8 @@ class SummaryScreenState extends State<SummaryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Paste text or upload a file to get started.', style: TextStyle(color: Colors.white70, fontSize: 16)),
+        const Text('Paste text or upload a file to get started.',
+            style: TextStyle(color: Colors.white70, fontSize: 16)),
         const SizedBox(height: 24),
         TextField(
           controller: _textController,
@@ -248,19 +287,23 @@ class SummaryScreenState extends State<SummaryScreen> {
             fillColor: Colors.grey[900],
             hintText: 'Paste your text here...',
             hintStyle: TextStyle(color: Colors.grey[600]),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none),
           ),
           onChanged: (text) => setState(() {}),
         ),
         const SizedBox(height: 24),
         OutlinedButton.icon(
           icon: const Icon(Icons.upload_file, color: Colors.white),
-          label: Text(_pdfFileName ?? 'Upload PDF', style: const TextStyle(color: Colors.white)),
+          label: Text(_pdfFileName ?? 'Upload PDF',
+              style: const TextStyle(color: Colors.white)),
           onPressed: _pickPdf,
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
             side: const BorderSide(color: Colors.white54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         ),
         if (_pdfFileName != null)
@@ -272,7 +315,8 @@ class SummaryScreenState extends State<SummaryScreen> {
                   _pdfBytes = null;
                   _pdfFileName = null;
                 }),
-                child: const Text('Clear PDF', style: TextStyle(color: Colors.redAccent)),
+                child: const Text('Clear PDF',
+                    style: TextStyle(color: Colors.redAccent)),
               ),
             ),
           ),
@@ -280,11 +324,14 @@ class SummaryScreenState extends State<SummaryScreen> {
         ElevatedButton(
           onPressed: canGenerate ? _generateSummary : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white, foregroundColor: Colors.black,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
             padding: const EdgeInsets.symmetric(vertical: 20),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
-          child: const Text('Generate Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: const Text('Generate Summary',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -297,9 +344,16 @@ class SummaryScreenState extends State<SummaryScreen> {
         children: [
           const Icon(Icons.error_outline, color: Colors.red, size: 64),
           const SizedBox(height: 16),
-          const Text('Oops! Something went wrong.', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          const Text('Oops! Something went wrong.',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          Text(_errorMessage, style: const TextStyle(color: Colors.white70, fontSize: 16), textAlign: TextAlign.center),
+          Text(_errorMessage,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              textAlign: TextAlign.center),
           const SizedBox(height: 24),
           ElevatedButton(onPressed: _retry, child: const Text('Retry')),
         ],
@@ -322,24 +376,38 @@ class SummaryScreenState extends State<SummaryScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15, spreadRadius: 2)],
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 15,
+                  spreadRadius: 2)
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_summaryTitle, style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(_summaryTitle,
+                  style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               if (_summaryTags.isNotEmpty)
                 Wrap(
                   spacing: 8.0,
                   runSpacing: 4.0,
-                  children: _summaryTags.map((tag) => Chip(
-                        label: Text(tag, style: const TextStyle(color: Colors.black)),
-                        backgroundColor: Colors.white.withOpacity(0.5),
-                      )).toList(),
+                  children: _summaryTags
+                      .map((tag) => Chip(
+                            label: Text(tag,
+                                style: const TextStyle(color: Colors.black)),
+                            backgroundColor: Colors.white.withOpacity(0.5),
+                          ))
+                      .toList(),
                 ),
               if (_summaryTags.isNotEmpty) const SizedBox(height: 16),
-              Text(_summaryContent, style: const TextStyle(color: Colors.black87, fontSize: 16, height: 1.5)),
+              Text(_summaryContent,
+                  style: const TextStyle(
+                      color: Colors.black87, fontSize: 16, height: 1.5)),
             ],
           ),
         ),
@@ -357,21 +425,26 @@ class SummaryScreenState extends State<SummaryScreen> {
           width: double.infinity,
           child: TextButton(
             onPressed: _generateQuiz,
-            child: const Text('Generate Quiz', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            child: const Text('Generate Quiz',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(height: 16),
         if (!isViewingSaved)
-            Center(
-              child: TextButton(
-                onPressed: _retry,
-                child: const Text('Generate Another Summary', style: TextStyle(color: Colors.white70)),
-              ),
+          Center(
+            child: TextButton(
+              onPressed: _retry,
+              child: const Text('Generate Another Summary',
+                  style: TextStyle(color: Colors.white70)),
             ),
+          ),
       ],
     );
   }
-  
+
   Widget _buildActionButton(String text, VoidCallback onPressed) {
     return ElevatedButton(
       onPressed: onPressed,

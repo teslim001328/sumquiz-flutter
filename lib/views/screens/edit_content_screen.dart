@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:flutter_quill/flutter_quill.dart';
+import 'dart:convert';
 
 import '../../models/editable_content.dart';
 import '../../models/quiz_question.dart';
 import '../../models/flashcard.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
-import '../../services/ai_service.dart'; 
+import '../../services/ai_service.dart';
 
 class EditContentScreen extends StatefulWidget {
   final EditableContent content;
@@ -27,9 +28,8 @@ class EditContentScreenState extends State<EditContentScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final AIService _aiService = AIService();
   bool _isLoading = false;
-  
-  // For rich text editor
-  quill.QuillController? _quillController;
+
+  QuillController? _quillController;
 
   @override
   void initState() {
@@ -39,17 +39,22 @@ class EditContentScreenState extends State<EditContentScreen> {
 
     if (widget.content.type == 'summary') {
       _initializeQuillController();
-    } 
+    }
 
-    _questions = widget.content.questions?.map((q) => QuizQuestion.from(q)).toList() ?? [];
-    _flashcards = widget.content.flashcards?.map((f) => Flashcard.from(f)).toList() ?? [];
+    _questions =
+        widget.content.questions?.map((q) => QuizQuestion.from(q)).toList() ??
+            [];
+    _flashcards =
+        widget.content.flashcards?.map((f) => Flashcard.from(f)).toList() ?? [];
   }
 
   void _initializeQuillController() {
-    final doc = (widget.content.content != null && widget.content.content.isNotEmpty)
-        ? quill.Document.fromJson(delta.toJson())
-        : quill.Document();
-    _quillController = quill.QuillController(document: doc, selection: const TextSelection.collapsed(offset: 0));
+    final content = widget.content.content;
+    final doc = (content != null && content.isNotEmpty)
+        ? Document.fromJson(jsonDecode(content))
+        : Document();
+    _quillController = QuillController(
+        document: doc, selection: const TextSelection.collapsed(offset: 0));
   }
 
   @override
@@ -63,7 +68,9 @@ class EditContentScreenState extends State<EditContentScreen> {
     final userModel = Provider.of<UserModel?>(context, listen: false);
     if (userModel == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to save.'), backgroundColor: Colors.orange),
+        const SnackBar(
+            content: Text('You must be logged in to save.'),
+            backgroundColor: Colors.orange),
       );
       return;
     }
@@ -73,22 +80,28 @@ class EditContentScreenState extends State<EditContentScreen> {
     try {
       switch (widget.content.type) {
         case 'summary':
-          final summaryContent = _quillController!.document.toDelta().toJson();
-          await _firestoreService.updateSummary(userModel.uid, widget.content.id, _titleController.text, summaryContent.toString(), _tags);
+          final summaryContent =
+              jsonEncode(_quillController!.document.toDelta().toJson());
+          await _firestoreService.updateSummary(userModel.uid,
+              widget.content.id, _titleController.text, summaryContent, _tags);
           break;
         case 'quiz':
-          await _firestoreService.updateQuiz(userModel.uid, widget.content.id, _titleController.text, _questions);
+          await _firestoreService.updateQuiz(userModel.uid, widget.content.id,
+              _titleController.text, _questions);
           break;
         case 'flashcard':
-          await _firestoreService.updateFlashcardSet(userModel.uid, widget.content.id, _titleController.text, _flashcards);
+          await _firestoreService.updateFlashcardSet(userModel.uid,
+              widget.content.id, _titleController.text, _flashcards);
           break;
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Content saved successfully!'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Content saved successfully!'),
+            backgroundColor: Colors.green),
       );
-      Navigator.pop(context, true); 
+      Navigator.pop(context, true);
     } on FirebaseException catch (e) {
       if (!mounted) return;
       String message = 'An error occurred.';
@@ -103,7 +116,9 @@ class EditContentScreenState extends State<EditContentScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An unexpected error occurred: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('An unexpected error occurred: $e'),
+            backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -114,7 +129,10 @@ class EditContentScreenState extends State<EditContentScreen> {
 
   void _addQuestion() {
     setState(() {
-      _questions.add(QuizQuestion(question: '', options: List.generate(4, (index) => ''), correctAnswer: ''));
+      _questions.add(QuizQuestion(
+          question: '',
+          options: List.generate(4, (index) => ''),
+          correctAnswer: ''));
     });
   }
 
@@ -135,25 +153,28 @@ class EditContentScreenState extends State<EditContentScreen> {
       _flashcards.removeAt(index);
     });
   }
-  
+
   void _addTag() {
     final TextEditingController tagController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Add a Tag'),
-        content: TextField(controller: tagController, decoration: const InputDecoration(hintText: 'Enter tag')),
+        content: TextField(
+            controller: tagController,
+            decoration: const InputDecoration(hintText: 'Enter tag')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')), 
           TextButton(
-            onPressed: () {
-              if (tagController.text.isNotEmpty) {
-                setState(() => _tags.add(tagController.text));
-                Navigator.of(context).pop();
-              }
-            }, 
-            child: const Text('Add')
-          ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () {
+                if (tagController.text.isNotEmpty) {
+                  setState(() => _tags.add(tagController.text));
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Add')),
         ],
       ),
     );
@@ -167,27 +188,51 @@ class EditContentScreenState extends State<EditContentScreen> {
 
   Future<void> _runAiAssist() async {
     if (_quillController == null || _isLoading) return;
-    
-    setState(() => _isLoading = true);
-    final currentText = _quillController!.document.toPlainText();
-    final suggestion = await _aiService.summarizeText(currentText);
-    
-    _quillController!.document.insert(_quillController!.document.length, '\n\nAI Suggestion:\n$suggestion');
-    setState(() => _isLoading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('AI suggestion added!'), backgroundColor: Colors.blue),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      final currentText = _quillController!.document.toPlainText();
+      final suggestion = await _aiService.getSuggestion(currentText);
+
+      _quillController!.document.insert(
+          _quillController!.document.length, '\n\nAI Suggestion:\n$suggestion');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('AI suggestion added!'),
+              backgroundColor: Colors.blue),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to get AI suggestion: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    String typeName = widget.content.type.isNotEmpty ? widget.content.type[0].toUpperCase() + widget.content.type.substring(1) : 'Content';
+    String typeName = widget.content.type.isNotEmpty
+        ? widget.content.type[0].toUpperCase() +
+            widget.content.type.substring(1)
+        : 'Content';
 
     return Scaffold(
       backgroundColor: const Color(0xFF1C1C1E),
       appBar: AppBar(
-        title: Text('Edit $typeName', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Edit $typeName',
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -198,7 +243,12 @@ class EditContentScreenState extends State<EditContentScreen> {
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.only(right: 20.0),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),
+              child: Center(
+                  child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))),
             )
           else
             IconButton(
@@ -218,8 +268,12 @@ class EditContentScreenState extends State<EditContentScreen> {
               if (widget.content.type != 'flashcard')
                 TextFormField(
                   controller: _titleController,
-                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                  decoration: _inputDecoration(label: 'Title', hint: 'Enter title'),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
+                  decoration:
+                      _inputDecoration(label: 'Title', hint: 'Enter title'),
                 ),
               const SizedBox(height: 24),
               if (widget.content.type == 'summary')
@@ -244,27 +298,48 @@ class EditContentScreenState extends State<EditContentScreen> {
       children: [
         _buildTagEditor(),
         const SizedBox(height: 24),
-        quill.QuillToolbar.basic(controller: _quillController!),
+        QuillToolbar.simple(
+          controller: _quillController!,
+          showAlignmentButtons: true,
+          showBoldButton: true,
+          showItalicButton: true,
+          showUnderLineButton: true,
+          showStrikeThrough: true,
+          showListBullets: true,
+          showListNumbers: true,
+          showCodeBlock: true,
+          showQuote: true,
+          showLink: true,
+        ),
         const SizedBox(height: 16),
         Container(
-          height: 300,
+          height: 400,
           decoration: BoxDecoration(
+            color: Colors.grey[900],
             border: Border.all(color: Colors.grey[700]!),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: quill.QuillEditor.basic(controller: _quillController!, readOnly: false),
+          child: QuillEditor.basic(
+            controller: _quillController!,
+            padding: const EdgeInsets.all(16),
+            placeholder: 'Start writing your summary...',
+            readOnly: false,
+          ),
         ),
         const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
             icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-            label: const Text('AI Assist', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            label: const Text('AI Assist',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
             onPressed: _runAiAssist,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey[850],
+              backgroundColor: Colors.blueAccent,
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ),
@@ -308,8 +383,13 @@ class EditContentScreenState extends State<EditContentScreen> {
           child: TextButton.icon(
             onPressed: _addQuestion,
             icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-            label: const Text('Add New Question', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            label: const Text('Add New Question',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
+            style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16)),
           ),
         ),
       ],
@@ -328,8 +408,16 @@ class EditContentScreenState extends State<EditContentScreen> {
             collapsedBackgroundColor: Colors.grey[900],
             iconColor: Colors.white,
             collapsedIconColor: Colors.white,
-            title: Text('Question ${index + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            subtitle: Text(_questions[index].question.isEmpty ? 'New Question' : _questions[index].question, style: TextStyle(color: Colors.grey[400]), maxLines: 1, overflow: TextOverflow.ellipsis),
+            title: Text('Question ${index + 1}',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            subtitle: Text(
+                _questions[index].question.isEmpty
+                    ? 'New Question'
+                    : _questions[index].question,
+                style: TextStyle(color: Colors.grey[400]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
             children: [
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -339,17 +427,23 @@ class EditContentScreenState extends State<EditContentScreen> {
                       initialValue: _questions[index].question,
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDecoration(label: 'Question'),
-                      onChanged: (value) => setState(() => _questions[index].question = value),
+                      onChanged: (value) =>
+                          setState(() => _questions[index].question = value),
                     ),
                     const SizedBox(height: 12),
                     ...List.generate(4, (optionIndex) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 8.0),
                         child: TextFormField(
-                          initialValue: _questions[index].options.length > optionIndex ? _questions[index].options[optionIndex] : '',
+                          initialValue:
+                              _questions[index].options.length > optionIndex
+                                  ? _questions[index].options[optionIndex]
+                                  : '',
                           style: const TextStyle(color: Colors.white),
-                          decoration: _inputDecoration(label: 'Option ${optionIndex + 1}'),
-                          onChanged: (value) => setState(() => _questions[index].options[optionIndex] = value),
+                          decoration: _inputDecoration(
+                              label: 'Option ${optionIndex + 1}'),
+                          onChanged: (value) => setState(() =>
+                              _questions[index].options[optionIndex] = value),
                         ),
                       );
                     }),
@@ -358,12 +452,14 @@ class EditContentScreenState extends State<EditContentScreen> {
                       initialValue: _questions[index].correctAnswer,
                       style: const TextStyle(color: Colors.white),
                       decoration: _inputDecoration(label: 'Correct Answer'),
-                      onChanged: (value) => setState(() => _questions[index].correctAnswer = value),
+                      onChanged: (value) => setState(
+                          () => _questions[index].correctAnswer = value),
                     ),
                     Align(
                       alignment: Alignment.centerRight,
                       child: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.redAccent),
                         onPressed: () => _removeQuestion(index),
                       ),
                     ),
@@ -382,9 +478,11 @@ class EditContentScreenState extends State<EditContentScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-            controller: _titleController,
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-            decoration: _inputDecoration(label: 'Set Title', hint: 'e.g., AI Basics'),
+          controller: _titleController,
+          style: const TextStyle(
+              color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          decoration:
+              _inputDecoration(label: 'Set Title', hint: 'e.g., AI Basics'),
         ),
         const SizedBox(height: 24),
         ListView.builder(
@@ -399,8 +497,13 @@ class EditContentScreenState extends State<EditContentScreen> {
           child: TextButton.icon(
             onPressed: _addFlashcard,
             icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-            label: const Text('Add Flashcard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            label: const Text('Add Flashcard',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16)),
+            style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16)),
           ),
         ),
       ],
@@ -427,7 +530,8 @@ class EditContentScreenState extends State<EditContentScreen> {
         color: Colors.grey[900],
         borderRadius: BorderRadius.circular(16),
         image: const DecorationImage(
-          image: NetworkImage('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Fflashcard_background_2.png?alt=media&token=38a1656f-44e2-4545-9774-5c9e99395254'),
+          image: NetworkImage(
+              'https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Fflashcard_background_2.png?alt=media&token=38a1656f-44e2-4545-9774-5c9e99395254'),
           fit: BoxFit.cover,
           opacity: 0.2,
         ),
@@ -437,10 +541,13 @@ class EditContentScreenState extends State<EditContentScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
             child: TextFormField(
-              initialValue: isFront ? _flashcards[index].question : _flashcards[index].answer,
+              initialValue: isFront
+                  ? _flashcards[index].question
+                  : _flashcards[index].answer,
               maxLines: 3,
               style: const TextStyle(color: Colors.white, fontSize: 18),
-              decoration: const InputDecoration.collapsed(hintText: '...', hintStyle: TextStyle(color: Colors.white54)),
+              decoration: const InputDecoration.collapsed(
+                  hintText: '...', hintStyle: TextStyle(color: Colors.white54)),
               onChanged: (value) {
                 setState(() {
                   if (isFront) {
@@ -453,12 +560,16 @@ class EditContentScreenState extends State<EditContentScreen> {
             ),
           ),
           Positioned(
-            top: 8, left: 16,
-            child: Text(isFront ? 'Front' : 'Back', style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold)),
+            top: 8,
+            left: 16,
+            child: Text(isFront ? 'Front' : 'Back',
+                style: TextStyle(
+                    color: Colors.grey[400], fontWeight: FontWeight.bold)),
           ),
           if (isFront)
             Positioned(
-              top: 0, right: 0,
+              top: 0,
+              right: 0,
               child: IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                 onPressed: () => _removeFlashcard(index),
@@ -470,7 +581,6 @@ class EditContentScreenState extends State<EditContentScreen> {
     );
   }
 
-
   InputDecoration _inputDecoration({required String label, String? hint}) {
     return InputDecoration(
       hintText: hint,
@@ -480,7 +590,8 @@ class EditContentScreenState extends State<EditContentScreen> {
       floatingLabelBehavior: FloatingLabelBehavior.auto,
       filled: true,
       fillColor: Colors.grey[850],
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(color: Colors.grey[700]!, width: 1),

@@ -16,7 +16,8 @@ class AiToolsScreen extends StatelessWidget {
             expandedHeight: 200.0,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              title: Text('AI Tools', style: GoogleFonts.oswald(fontWeight: FontWeight.bold)),
+              title: Text('AI Tools',
+                  style: GoogleFonts.oswald(fontWeight: FontWeight.bold)),
               centerTitle: true,
               background: Container(
                 decoration: BoxDecoration(
@@ -38,7 +39,8 @@ class AiToolsScreen extends StatelessWidget {
                     context,
                     icon: Icons.flash_on,
                     title: 'Generate Summary',
-                    subtitle: 'Summarize any text, article, or document instantly.',
+                    subtitle:
+                        'Summarize any text, article, or document instantly.',
                     color: const Color(0xFF1E3A8A), // A deep blue shade
                     onTap: () => context.push('/summary'),
                   ),
@@ -47,7 +49,8 @@ class AiToolsScreen extends StatelessWidget {
                     context,
                     icon: Icons.filter_none,
                     title: 'Flashcards',
-                    subtitle: 'Create flashcards from any content to aid your learning.',
+                    subtitle:
+                        'Create flashcards from any content to aid your learning.',
                     color: const Color(0xFF6EE7B7), // A mint green shade
                     onTap: () => context.push('/flashcards'),
                   ),
@@ -56,7 +59,8 @@ class AiToolsScreen extends StatelessWidget {
                     context,
                     icon: Icons.question_answer,
                     title: 'Generate Quiz',
-                    subtitle: 'Create a quiz from any content to test your knowledge.',
+                    subtitle:
+                        'Create a quiz from any content to test your knowledge.',
                     color: const Color(0xFFC026D3), // A fuchsia shade
                     onTap: () => context.push('/quiz'),
                   ),
@@ -69,7 +73,12 @@ class AiToolsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureCard(BuildContext context, {required IconData icon, required String title, required String subtitle, required Color color, required VoidCallback onTap}) {
+  Widget _buildFeatureCard(BuildContext context,
+      {required IconData icon,
+      required String title,
+      required String subtitle,
+      required Color color,
+      required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -92,9 +101,15 @@ class AiToolsScreen extends StatelessWidget {
           children: [
             Icon(icon, size: 40, color: color),
             const SizedBox(height: 16),
-            Text(title, style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(title,
+                style: GoogleFonts.oswald(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 8),
-            Text(subtitle, style: GoogleFonts.roboto(fontSize: 16, color: Colors.white70, height: 1.5)),
+            Text(subtitle,
+                style: GoogleFonts.roboto(
+                    fontSize: 16, color: Colors.white70, height: 1.5)),
           ],
         ),
       ),

@@ -17,45 +17,52 @@ class AddContentModal extends StatelessWidget {
       child: Wrap(
         children: <Widget>[
           ListTile(
-            leading: const Icon(Icons.description_outlined, color: Colors.white),
-            title: const Text('Create a Summary', style: TextStyle(color: Colors.white)),
+            leading:
+                const Icon(Icons.description_outlined, color: Colors.white),
+            title: const Text('Create a Summary',
+                style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.of(context).pop();
-              context.push('/edit-content', extra: EditableContent(
-                id: uuid.v4(),
-                title: '',
-                content: '',
-                type: 'summary',
-                timestamp: Timestamp.now(),
-              ));
+              context.push('/edit-content',
+                  extra: EditableContent(
+                    id: uuid.v4(),
+                    title: '',
+                    content: '',
+                    type: 'summary',
+                    timestamp: Timestamp.now(),
+                  ));
             },
           ),
           ListTile(
             leading: const Icon(Icons.quiz_outlined, color: Colors.white),
-            title: const Text('Create a Quiz', style: TextStyle(color: Colors.white)),
+            title: const Text('Create a Quiz',
+                style: TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.of(context).pop();
-              context.push('/edit-content', extra: EditableContent(
-                id: uuid.v4(),
-                title: '',
-                type: 'quiz',
-                questions: [],
-                timestamp: Timestamp.now(),
-              ));
+              context.push('/edit-content',
+                  extra: EditableContent(
+                    id: uuid.v4(),
+                    title: '',
+                    type: 'quiz',
+                    questions: [],
+                    timestamp: Timestamp.now(),
+                  ));
             },
           ),
           ListTile(
             leading: const Icon(Icons.style_outlined, color: Colors.white),
-            title: const Text('Create Flashcards', style: TextStyle(color: Colors.white)),
+            title: const Text('Create Flashcards',
+                style: TextStyle(color: Colors.white)),
             onTap: () {
-               Navigator.of(context).pop();
-               context.push('/edit-content', extra: EditableContent(
-                id: uuid.v4(),
-                title: '',
-                type: 'flashcard',
-                flashcards: [],
-                timestamp: Timestamp.now(),
-              ));
+              Navigator.of(context).pop();
+              context.push('/edit-content',
+                  extra: EditableContent(
+                    id: uuid.v4(),
+                    title: '',
+                    type: 'flashcard',
+                    flashcards: [],
+                    timestamp: Timestamp.now(),
+                  ));
             },
           ),
         ],

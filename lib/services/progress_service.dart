@@ -5,23 +5,30 @@ class ProgressService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<int> getSummariesCount(String userId) async {
-    final snapshot = await _db.collection('users').doc(userId).collection('summaries').get();
+    final snapshot =
+        await _db.collection('users').doc(userId).collection('summaries').get();
     return snapshot.docs.length;
   }
 
   Future<int> getQuizzesCount(String userId) async {
-    final snapshot = await _db.collection('users').doc(userId).collection('quizzes').get();
+    final snapshot =
+        await _db.collection('users').doc(userId).collection('quizzes').get();
     return snapshot.docs.length;
   }
 
   Future<int> getFlashcardsCount(String userId) async {
-    final snapshot = await _db.collection('users').doc(userId).collection('flashcards').get();
+    final snapshot = await _db
+        .collection('users')
+        .doc(userId)
+        .collection('flashcards')
+        .get();
     return snapshot.docs.length;
   }
 
   Future<List<FlSpot>> getWeeklyActivity(String userId) async {
     final today = DateTime.now();
-    final last7Days = List.generate(7, (index) => today.subtract(Duration(days: index)));
+    final last7Days =
+        List.generate(7, (index) => today.subtract(Duration(days: index)));
     final activity = <double>[0, 0, 0, 0, 0, 0, 0];
 
     final summaries = await _db
@@ -69,6 +76,7 @@ class ProgressService {
       }
     }
 
-    return List.generate(7, (index) => FlSpot(index.toDouble(), activity[index]));
+    return List.generate(
+        7, (index) => FlSpot(index.toDouble(), activity[index]));
   }
 }

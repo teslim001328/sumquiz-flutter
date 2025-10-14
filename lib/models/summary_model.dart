@@ -17,6 +17,24 @@ class Summary {
     this.tags = const [],
   });
 
+  Summary copyWith({
+    String? id,
+    String? userId,
+    String? title,
+    String? content,
+    Timestamp? timestamp,
+    List<String>? tags,
+  }) {
+    return Summary(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      timestamp: timestamp ?? this.timestamp,
+      tags: tags ?? this.tags,
+    );
+  }
+
   factory Summary.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
     return Summary(

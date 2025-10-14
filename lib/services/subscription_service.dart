@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 class SubscriptionService {
-  static const String _subscriptionId = 'pro_subscription'; // Example subscription ID
+  static const String _subscriptionId =
+      'pro_subscription'; // Example subscription ID
 
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   late StreamSubscription<List<PurchaseDetails>> _subscription;
@@ -43,7 +44,8 @@ class SubscriptionService {
   }
 
   Future<void> purchaseSubscription(ProductDetails productDetails) async {
-    final PurchaseParam purchaseParam = PurchaseParam(productDetails: productDetails);
+    final PurchaseParam purchaseParam =
+        PurchaseParam(productDetails: productDetails);
     await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
   }
 
@@ -51,12 +53,13 @@ class SubscriptionService {
       List<PurchaseDetails> purchaseDetailsList, BuildContext context) {
     for (var purchaseDetails in purchaseDetailsList) {
       if (purchaseDetails.status == PurchaseStatus.pending) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Purchase is pending...')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Purchase is pending...')));
       } else {
         if (purchaseDetails.status == PurchaseStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Purchase Error: ${purchaseDetails.error?.message}')));
+              content:
+                  Text('Purchase Error: ${purchaseDetails.error?.message}')));
         } else if (purchaseDetails.status == PurchaseStatus.purchased ||
             purchaseDetails.status == PurchaseStatus.restored) {
           ScaffoldMessenger.of(context).showSnackBar(

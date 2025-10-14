@@ -25,7 +25,8 @@ class EditableContent {
   });
 
   /// Create an EditableContent instance from a summary
-  factory EditableContent.fromSummary(String id, String title, String content, List<String> tags, Timestamp timestamp) {
+  factory EditableContent.fromSummary(String id, String title, String content,
+      List<String> tags, Timestamp timestamp) {
     return EditableContent(
       id: id,
       type: 'summary',
@@ -37,7 +38,8 @@ class EditableContent {
   }
 
   /// Create an EditableContent instance from a quiz
-  factory EditableContent.fromQuiz(String id, String title, List<QuizQuestion> questions, Timestamp timestamp) {
+  factory EditableContent.fromQuiz(String id, String title,
+      List<QuizQuestion> questions, Timestamp timestamp) {
     return EditableContent(
       id: id,
       type: 'quiz',
@@ -48,7 +50,8 @@ class EditableContent {
   }
 
   /// Create an EditableContent instance from a flashcard set
-  factory EditableContent.fromFlashcardSet(String id, String title, List<Flashcard> flashcards, Timestamp timestamp) {
+  factory EditableContent.fromFlashcardSet(String id, String title,
+      List<Flashcard> flashcards, Timestamp timestamp) {
     return EditableContent(
       id: id,
       type: 'flashcard',

@@ -56,7 +56,8 @@ class SubscriptionScreenState extends State<SubscriptionScreen> {
               children: [
                 Text(
                   product.title,
-                  style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.oswald(
+                      fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -66,7 +67,8 @@ class SubscriptionScreenState extends State<SubscriptionScreen> {
                 const SizedBox(height: 24),
                 Text(
                   product.price,
-                  style: GoogleFonts.oswald(fontSize: 32, fontWeight: FontWeight.bold),
+                  style: GoogleFonts.oswald(
+                      fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(

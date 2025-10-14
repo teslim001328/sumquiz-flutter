@@ -24,7 +24,8 @@ class SpacedRepetitionService {
     await _srsBox.put(flashcardId, newItem);
   }
 
-  Future<List<LocalFlashcard>> getDueFlashcards(List<LocalFlashcard> allFlashcards) async {
+  Future<List<LocalFlashcard>> getDueFlashcards(
+      List<LocalFlashcard> allFlashcards) async {
     final dueItems = _srsBox.values.where((item) {
       if (item.contentType != 'flashcard') return false;
       final interval = _getInterval(item.repetitionCount);
@@ -35,10 +36,12 @@ class SpacedRepetitionService {
     final dueFlashcards = <LocalFlashcard>[];
     for (final item in dueItems) {
       try {
-        final flashcard = allFlashcards.firstWhere((fc) => fc.id == item.contentId);
+        final flashcard =
+            allFlashcards.firstWhere((fc) => fc.id == item.contentId);
         dueFlashcards.add(flashcard);
       } catch (e) {
-        developer.log('Flashcard with id ${item.contentId} not found', name: 'SpacedRepetitionService');
+        developer.log('Flashcard with id ${item.contentId} not found',
+            name: 'SpacedRepetitionService');
       }
     }
     return dueFlashcards;
@@ -64,7 +67,8 @@ class SpacedRepetitionService {
         userId: item.userId,
         contentId: item.contentId,
         contentType: item.contentType,
-        nextReviewDate: now.add(Duration(days: _getInterval(newRepetitionCount))),
+        nextReviewDate:
+            now.add(Duration(days: _getInterval(newRepetitionCount))),
         repetitionCount: newRepetitionCount,
         correctStreak: newCorrectStreak,
         lastReviewed: now,
@@ -83,7 +87,8 @@ class SpacedRepetitionService {
   }
 
   Future<Map<String, dynamic>> getStatistics(String userId) async {
-    final allItems = _srsBox.values.where((item) => item.userId == userId).toList();
+    final allItems =
+        _srsBox.values.where((item) => item.userId == userId).toList();
 
     if (allItems.isEmpty) {
       return {
@@ -95,15 +100,20 @@ class SpacedRepetitionService {
     }
 
     final totalReviews = allItems.length;
-    final correctReviews = allItems.where((item) => item.correctStreak > 0).length;
-    final averageCorrectness = totalReviews > 0 ? correctReviews / totalReviews : 0.0;
-    final totalCorrectStreaks = allItems.fold<int>(0, (prev, item) => prev + item.correctStreak);
-    final masteryLevel = totalReviews > 0 ? totalCorrectStreaks / totalReviews : 0.0;
+    final correctReviews =
+        allItems.where((item) => item.correctStreak > 0).length;
+    final averageCorrectness =
+        totalReviews > 0 ? correctReviews / totalReviews : 0.0;
+    final totalCorrectStreaks =
+        allItems.fold<int>(0, (prev, item) => prev + item.correctStreak);
+    final masteryLevel =
+        totalReviews > 0 ? totalCorrectStreaks / totalReviews : 0.0;
 
     // Group reviews by day
     final reviewsOverTime = <DateTime, int>{};
     for (final item in allItems) {
-      final date = DateTime(item.lastReviewed.year, item.lastReviewed.month, item.lastReviewed.day);
+      final date = DateTime(item.lastReviewed.year, item.lastReviewed.month,
+          item.lastReviewed.day);
       reviewsOverTime[date] = (reviewsOverTime[date] ?? 0) + 1;
     }
 

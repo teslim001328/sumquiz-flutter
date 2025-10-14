@@ -49,12 +49,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
     try {
       final dbService = LocalDatabaseService();
       await dbService.init(); // Ensure initialized
-      final srsService = SpacedRepetitionService(dbService.getSpacedRepetitionBox());
+      final srsService =
+          SpacedRepetitionService(dbService.getSpacedRepetitionBox());
       final firestoreService = FirestoreService();
 
       // Fetch all data in parallel
       final srsStatsFuture = srsService.getStatistics(userId);
-      final firestoreStatsFuture = firestoreService.streamAllItems(userId).first;
+      final firestoreStatsFuture =
+          firestoreService.streamAllItems(userId).first;
 
       final results = await Future.wait([srsStatsFuture, firestoreStatsFuture]);
       final srsStats = results[0];
@@ -70,10 +72,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
         'quizzesCount': quizzesCount,
         'flashcardsCount': flashcardsCount,
       };
-      developer.log('Stats loaded successfully: $result', name: 'ProgressScreen');
+      developer.log('Stats loaded successfully: $result',
+          name: 'ProgressScreen');
       return result;
     } catch (e, s) {
-      developer.log('Error loading stats', name: 'ProgressScreen', error: e, stackTrace: s);
+      developer.log('Error loading stats',
+          name: 'ProgressScreen', error: e, stackTrace: s);
       // Rethrow the error to be caught by the FutureBuilder
       rethrow;
     }
@@ -84,13 +88,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
     final user = Provider.of<User?>(context);
 
     if (user == null) {
-      return const Center(child: Text('Please log in to view your progress.', style: TextStyle(color: Colors.white)));
+      return const Center(
+          child: Text('Please log in to view your progress.',
+              style: TextStyle(color: Colors.white)));
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text('Progress', style: GoogleFonts.oswald(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Progress',
+            style: GoogleFonts.oswald(
+                color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
@@ -99,10 +107,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
         future: _statsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
+            return const Center(
+                child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
           }
           if (snapshot.hasError) {
-            developer.log('FutureBuilder error', name: 'ProgressScreen', error: snapshot.error, stackTrace: snapshot.stackTrace);
+            developer.log('FutureBuilder error',
+                name: 'ProgressScreen',
+                error: snapshot.error,
+                stackTrace: snapshot.stackTrace);
             return _buildErrorState(user.uid, snapshot.error!);
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -126,7 +139,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   const SizedBox(height: 24),
                   _buildReviewBanner(stats['dueForReviewCount'] as int? ?? 0),
                   const SizedBox(height: 24),
-                  _buildUpcomingReviews(stats['upcomingReviews'] as List<MapEntry<DateTime, int>>? ?? []),
+                  _buildUpcomingReviews(stats['upcomingReviews']
+                          as List<MapEntry<DateTime, int>>? ??
+                      []),
                 ],
               ),
             ),
@@ -145,54 +160,77 @@ class _ProgressScreenState extends State<ProgressScreen> {
           children: [
             const Icon(Icons.error_outline, color: Colors.red, size: 60),
             const SizedBox(height: 16),
-            const Text('Something went wrong.', style: TextStyle(color: Colors.white, fontSize: 18)),
+            const Text('Something went wrong.',
+                style: TextStyle(color: Colors.white, fontSize: 18)),
             const SizedBox(height: 8),
-            Text('Could not load your progress. Please try again later.', style: TextStyle(color: Colors.grey[400]), textAlign: TextAlign.center),
+            Text('Could not load your progress. Please try again later.',
+                style: TextStyle(color: Colors.grey[400]),
+                textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            Text('Details: ${error.toString()}', style: TextStyle(color: Colors.grey[600]), textAlign: TextAlign.center),
+            Text('Details: ${error.toString()}',
+                style: TextStyle(color: Colors.grey[600]),
+                textAlign: TextAlign.center),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: () => setState(() => _statsFuture = _loadStats(userId)), child: const Text('Retry'))
+            ElevatedButton(
+                onPressed: () =>
+                    setState(() => _statsFuture = _loadStats(userId)),
+                child: const Text('Retry'))
           ],
         ),
       ),
     );
   }
 
-
   Widget _buildTopMetrics(Map<String, dynamic> stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Top Metrics', style: GoogleFonts.oswald(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text('Top Metrics',
+            style: GoogleFonts.oswald(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white)),
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildMetricChip('Summaries', (stats['summariesCount'] ?? 0).toString())),
+            Expanded(
+                child: _buildMetricChip(
+                    'Summaries', (stats['summariesCount'] ?? 0).toString())),
             const SizedBox(width: 10),
-            Expanded(child: _buildMetricChip('Quizzes', (stats['quizzesCount'] ?? 0).toString())),
+            Expanded(
+                child: _buildMetricChip(
+                    'Quizzes', (stats['quizzesCount'] ?? 0).toString())),
           ],
         ),
         const SizedBox(height: 10),
-        _buildMetricChip('Flashcards', (stats['flashcardsCount'] ?? 0).toString(), isFullWidth: true),
+        _buildMetricChip(
+            'Flashcards', (stats['flashcardsCount'] ?? 0).toString(),
+            isFullWidth: true),
       ],
     );
   }
 
-  Widget _buildMetricChip(String label, String value, {bool isFullWidth = false}) {
+  Widget _buildMetricChip(String label, String value,
+      {bool isFullWidth = false}) {
     return Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.grey[900],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(value, style: GoogleFonts.oswald(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(label, style: GoogleFonts.roboto(color: Colors.grey[400], fontSize: 14)),
-          ],
-        ),
-      );
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(value,
+              style: GoogleFonts.oswald(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(label,
+              style: GoogleFonts.roboto(color: Colors.grey[400], fontSize: 14)),
+        ],
+      ),
+    );
   }
 
   Widget _buildReviewBanner(int dueCount) {
@@ -202,7 +240,8 @@ class _ProgressScreenState extends State<ProgressScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         image: const DecorationImage(
-          image: NetworkImage('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Freview_banner.png?alt=media&token=8f3955e8-1269-482d-9793-1fe2a27b134b'),
+          image: NetworkImage(
+              'https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Freview_banner.png?alt=media&token=8f3955e8-1269-482d-9793-1fe2a27b134b'),
           fit: BoxFit.cover,
         ),
       ),
@@ -223,8 +262,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$dueCount items', style: GoogleFonts.oswald(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                Text('Due for review today', style: GoogleFonts.roboto(color: Colors.white.withAlpha(230), fontSize: 16)),
+                Text('$dueCount items',
+                    style: GoogleFonts.oswald(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold)),
+                Text('Due for review today',
+                    style: GoogleFonts.roboto(
+                        color: Colors.white.withAlpha(230), fontSize: 16)),
               ],
             ),
           ),
@@ -235,18 +280,29 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   Widget _buildUpcomingReviews(List<MapEntry<DateTime, int>> upcomingReviews) {
     final weeklyData = _prepareWeeklyData(upcomingReviews);
-    final totalUpcoming = upcomingReviews.fold<int>(0, (sum, item) => sum + item.value);
+    final totalUpcoming =
+        upcomingReviews.fold<int>(0, (sum, item) => sum + item.value);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Upcoming Reviews', style: GoogleFonts.oswald(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text('Upcoming Reviews',
+            style: GoogleFonts.oswald(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white)),
         const SizedBox(height: 16),
         Row(
           children: [
-            Text(totalUpcoming.toString(), style: GoogleFonts.oswald(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(totalUpcoming.toString(),
+                style: GoogleFonts.oswald(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(width: 8),
-            Text('in the next 7 days', style: GoogleFonts.roboto(color: Colors.grey[400], fontSize: 16)),
+            Text('in the next 7 days',
+                style:
+                    GoogleFonts.roboto(color: Colors.grey[400], fontSize: 16)),
           ],
         ),
         const SizedBox(height: 20),
@@ -265,22 +321,28 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       toY: count.toDouble(),
                       color: const Color(0xFF6EE7B7),
                       width: 22,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(6)),
                     ),
                   ],
                 );
               }).toList(),
               titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
                       final now = DateTime.now();
                       final day = now.add(Duration(days: value.toInt()));
-                      return Text(DateFormat.E().format(day), style: TextStyle(color: Colors.grey[500], fontSize: 12));
+                      return Text(DateFormat.E().format(day),
+                          style:
+                              TextStyle(color: Colors.grey[500], fontSize: 12));
                     },
                     reservedSize: 30,
                   ),
@@ -300,18 +362,21 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  List<MapEntry<int, int>> _prepareWeeklyData(List<MapEntry<DateTime, int>> upcomingReviews) {
-    final weeklyMap = { for (var i = 0; i < 7; i++) i: 0 };
+  List<MapEntry<int, int>> _prepareWeeklyData(
+      List<MapEntry<DateTime, int>> upcomingReviews) {
+    final weeklyMap = {for (var i = 0; i < 7; i++) i: 0};
     final today = DateTime.now();
     final startOfToday = DateTime(today.year, today.month, today.day);
 
     for (var review in upcomingReviews) {
       final reviewDate = review.key;
-      final startOfReviewDay = DateTime(reviewDate.year, reviewDate.month, reviewDate.day);
+      final startOfReviewDay =
+          DateTime(reviewDate.year, reviewDate.month, reviewDate.day);
       final dayIndex = startOfReviewDay.difference(startOfToday).inDays;
 
       if (dayIndex >= 0 && dayIndex < 7) {
-        weeklyMap.update(dayIndex, (value) => value + review.value, ifAbsent: () => review.value);
+        weeklyMap.update(dayIndex, (value) => value + review.value,
+            ifAbsent: () => review.value);
       }
     }
     return weeklyMap.entries.toList();
@@ -324,18 +389,26 @@ class _ProgressScreenState extends State<ProgressScreen> {
         children: [
           const Icon(Icons.leaderboard_outlined, size: 80, color: Colors.grey),
           const SizedBox(height: 16),
-          Text('No Progress Data Yet', style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text('No Progress Data Yet',
+              style: GoogleFonts.oswald(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40.0),
             child: Text(
               'Complete some quizzes or flashcard reviews to see your progress here.',
-              style: GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
+              style:
+                  GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
           ),
           const SizedBox(height: 20),
-          ElevatedButton(onPressed: () => setState(() => _statsFuture = _loadStats(userId)), child: const Text('Refresh'))
+          ElevatedButton(
+              onPressed: () =>
+                  setState(() => _statsFuture = _loadStats(userId)),
+              child: const Text('Refresh'))
         ],
       ),
     );

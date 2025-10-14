@@ -19,7 +19,7 @@ import 'package:myapp/services/local_database_service.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final LocalDatabaseService _localDb = LocalDatabaseService();
-  
+
   FirebaseFirestore get db => _db;
 
   Stream<UserModel?> streamUser(String uid) {
@@ -35,10 +35,11 @@ class FirestoreService {
   }
 
   Future<bool> canGenerate(String uid, String feature) async {
-    DocumentSnapshot<Map<String, dynamic>> doc = await _db.collection('users').doc(uid).get();
+    DocumentSnapshot<Map<String, dynamic>> doc =
+        await _db.collection('users').doc(uid).get();
     if (doc.exists) {
       int dailyCount = doc.data()!['daily_usage'][feature] ?? 0;
-      return dailyCount < 1000; 
+      return dailyCount < 1000;
     }
     return false;
   }
@@ -56,7 +57,8 @@ class FirestoreService {
         .collection('summaries')
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((list) => list.docs.map((doc) => Summary.fromFirestore(doc)).toList());
+        .map((list) =>
+            list.docs.map((doc) => Summary.fromFirestore(doc)).toList());
   }
 
   Stream<List<Quiz>> streamQuizzes(String uid) {
@@ -66,7 +68,8 @@ class FirestoreService {
         .collection('quizzes')
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((list) => list.docs.map((doc) => Quiz.fromFirestore(doc)).toList());
+        .map(
+            (list) => list.docs.map((doc) => Quiz.fromFirestore(doc)).toList());
   }
 
   Stream<List<FlashcardSet>> streamFlashcardSets(String uid) {
@@ -79,15 +82,18 @@ class FirestoreService {
         .map((list) =>
             list.docs.map((doc) => FlashcardSet.fromFirestore(doc)).toList());
   }
-  
+
   Stream<List<LibraryItem>> streamItems(String userId, String type) {
     switch (type) {
       case 'summaries':
-        return streamSummaries(userId).map((items) => items.map(LibraryItem.fromSummary).toList());
+        return streamSummaries(userId)
+            .map((items) => items.map(LibraryItem.fromSummary).toList());
       case 'quizzes':
-        return streamQuizzes(userId).map((items) => items.map(LibraryItem.fromQuiz).toList());
+        return streamQuizzes(userId)
+            .map((items) => items.map(LibraryItem.fromQuiz).toList());
       case 'flashcards':
-        return streamFlashcardSets(userId).map((items) => items.map(LibraryItem.fromFlashcardSet).toList());
+        return streamFlashcardSets(userId)
+            .map((items) => items.map(LibraryItem.fromFlashcardSet).toList());
       default:
         return Stream.value([]);
     }
@@ -95,9 +101,12 @@ class FirestoreService {
 
   Stream<Map<String, List<LibraryItem>>> streamAllItems(String userId) {
     return CombineLatestStream.combine3(
-      streamSummaries(userId).map((list) => list.map(LibraryItem.fromSummary).toList()),
-      streamQuizzes(userId).map((list) => list.map(LibraryItem.fromQuiz).toList()),
-      streamFlashcardSets(userId).map((list) => list.map(LibraryItem.fromFlashcardSet).toList()),
+      streamSummaries(userId)
+          .map((list) => list.map(LibraryItem.fromSummary).toList()),
+      streamQuizzes(userId)
+          .map((list) => list.map(LibraryItem.fromQuiz).toList()),
+      streamFlashcardSets(userId)
+          .map((list) => list.map(LibraryItem.fromFlashcardSet).toList()),
       (summaries, quizzes, flashcards) => {
         'summaries': summaries,
         'quizzes': quizzes,
@@ -107,29 +116,31 @@ class FirestoreService {
   }
 
   Future<void> addSummary(String userId, Summary summary) async {
-    final newDocRef = _db.collection('users').doc(userId).collection('summaries').doc();
-    summary.id = newDocRef.id;
+    final newDocRef =
+        _db.collection('users').doc(userId).collection('summaries').doc();
+    final summaryWithId = summary.copyWith(id: newDocRef.id);
 
     final localSummary = LocalSummary(
-      id: summary.id,
-      title: summary.title,
-      content: summary.content,
-      tags: summary.tags,
-      timestamp: summary.timestamp.toDate(),
+      id: summaryWithId.id,
+      title: summaryWithId.title,
+      content: summaryWithId.content,
+      tags: summaryWithId.tags,
+      timestamp: summaryWithId.timestamp.toDate(),
       userId: userId,
       isSynced: false,
     );
     await _localDb.saveSummary(localSummary);
-    
+
     try {
-      await newDocRef.set(summary.toFirestore());
-      await _localDb.updateSummarySyncStatus(summary.id, true);
+      await newDocRef.set(summaryWithId.toFirestore());
+      await _localDb.updateSummarySyncStatus(summaryWithId.id, true);
     } catch (e) {
       debugPrint('Error saving summary to Firestore: $e');
     }
   }
 
-  Future<void> updateSummary(String userId, String summaryId, String title, String content, List<String> tags) async {
+  Future<void> updateSummary(String userId, String summaryId, String title,
+      String content, List<String> tags) async {
     final timestamp = Timestamp.now();
     final localSummary = await _localDb.getSummary(summaryId);
     if (localSummary != null) {
@@ -140,7 +151,7 @@ class FirestoreService {
       localSummary.isSynced = false;
       await _localDb.saveSummary(localSummary);
     }
-    
+
     try {
       await _db
           .collection('users')
@@ -148,12 +159,12 @@ class FirestoreService {
           .collection('summaries')
           .doc(summaryId)
           .update({
-            'title': title,
-            'content': content,
-            'tags': tags,
-            'timestamp': timestamp,
-          });
-      
+        'title': title,
+        'content': content,
+        'tags': tags,
+        'timestamp': timestamp,
+      });
+
       await _localDb.updateSummarySyncStatus(summaryId, true);
     } catch (e) {
       debugPrint('Error updating summary in Firestore: $e');
@@ -161,39 +172,46 @@ class FirestoreService {
   }
 
   Future<void> deleteSummary(String userId, String summaryId) async {
-    await _db.collection('users').doc(userId).collection('summaries').doc(summaryId).delete();
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('summaries')
+        .doc(summaryId)
+        .delete();
     await _localDb.deleteSummary(summaryId);
   }
 
   Future<void> addQuiz(String userId, Quiz quiz) async {
-    final newDocRef = _db.collection('users').doc(userId).collection('quizzes').doc();
-    quiz.id = newDocRef.id;
+    final newDocRef =
+        _db.collection('users').doc(userId).collection('quizzes').doc();
+    final quizWithId = quiz.copyWith(id: newDocRef.id);
 
     final localQuiz = LocalQuiz(
-      id: quiz.id,
-      title: quiz.title,
-      questions: quiz.questions
+      id: quizWithId.id,
+      title: quizWithId.title,
+      questions: quizWithId.questions
           .map((q) => LocalQuizQuestion(
                 question: q.question,
                 options: q.options,
                 correctAnswer: q.correctAnswer,
               ))
           .toList(),
-      timestamp: quiz.timestamp.toDate(),
+      timestamp: quizWithId.timestamp.toDate(),
       userId: userId,
       isSynced: false,
     );
     await _localDb.saveQuiz(localQuiz);
-    
+
     try {
-      await newDocRef.set(quiz.toFirestore());
-      await _localDb.updateQuizSyncStatus(quiz.id, true);
+      await newDocRef.set(quizWithId.toFirestore());
+      await _localDb.updateQuizSyncStatus(quizWithId.id, true);
     } catch (e) {
       debugPrint('Error saving quiz to Firestore: $e');
     }
   }
 
-  Future<void> updateQuiz(String userId, String quizId, String title, List<QuizQuestion> questions) async {
+  Future<void> updateQuiz(String userId, String quizId, String title,
+      List<QuizQuestion> questions) async {
     final timestamp = Timestamp.now();
     final localQuiz = await _localDb.getQuiz(quizId);
     if (localQuiz != null) {
@@ -209,7 +227,7 @@ class FirestoreService {
       localQuiz.isSynced = false;
       await _localDb.saveQuiz(localQuiz);
     }
-    
+
     try {
       await _db
           .collection('users')
@@ -217,10 +235,10 @@ class FirestoreService {
           .collection('quizzes')
           .doc(quizId)
           .update({
-            'title': title,
-            'questions': questions.map((q) => q.toFirestore()).toList(),
-            'timestamp': timestamp,
-          });
+        'title': title,
+        'questions': questions.map((q) => q.toFirestore()).toList(),
+        'timestamp': timestamp,
+      });
       await _localDb.updateQuizSyncStatus(quizId, true);
     } catch (e) {
       debugPrint('Error updating quiz in Firestore: $e');
@@ -228,38 +246,45 @@ class FirestoreService {
   }
 
   Future<void> deleteQuiz(String userId, String quizId) async {
-    await _db.collection('users').doc(userId).collection('quizzes').doc(quizId).delete();
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('quizzes')
+        .doc(quizId)
+        .delete();
     await _localDb.deleteQuiz(quizId);
   }
 
   Future<void> addFlashcardSet(String userId, FlashcardSet flashcardSet) async {
-    final newDocRef = _db.collection('users').doc(userId).collection('flashcard_sets').doc();
-    flashcardSet.id = newDocRef.id;
+    final newDocRef =
+        _db.collection('users').doc(userId).collection('flashcard_sets').doc();
+    final flashcardSetWithId = flashcardSet.copyWith(id: newDocRef.id);
 
     final localFlashcardSet = LocalFlashcardSet(
-      id: flashcardSet.id,
-      title: flashcardSet.title,
-      flashcards: flashcardSet.flashcards
+      id: flashcardSetWithId.id,
+      title: flashcardSetWithId.title,
+      flashcards: flashcardSetWithId.flashcards
           .map((f) => LocalFlashcard(
                 question: f.question,
                 answer: f.answer,
               ))
           .toList(),
-      timestamp: flashcardSet.timestamp.toDate(),
+      timestamp: flashcardSetWithId.timestamp.toDate(),
       userId: userId,
       isSynced: false,
     );
     await _localDb.saveFlashcardSet(localFlashcardSet);
-    
+
     try {
-      await newDocRef.set(flashcardSet.toFirestore());
-      await _localDb.updateFlashcardSetSyncStatus(flashcardSet.id, true);
+      await newDocRef.set(flashcardSetWithId.toFirestore());
+      await _localDb.updateFlashcardSetSyncStatus(flashcardSetWithId.id, true);
     } catch (e) {
       debugPrint('Error saving flashcard set to Firestore: $e');
     }
   }
 
-  Future<void> updateFlashcardSet(String userId, String flashcardSetId, String title, List<Flashcard> flashcards) async {
+  Future<void> updateFlashcardSet(String userId, String flashcardSetId,
+      String title, List<Flashcard> flashcards) async {
     final timestamp = Timestamp.now();
     final localFlashcardSet = await _localDb.getFlashcardSet(flashcardSetId);
     if (localFlashcardSet != null) {
@@ -274,7 +299,7 @@ class FirestoreService {
       localFlashcardSet.isSynced = false;
       await _localDb.saveFlashcardSet(localFlashcardSet);
     }
-    
+
     try {
       await _db
           .collection('users')
@@ -282,10 +307,10 @@ class FirestoreService {
           .collection('flashcard_sets')
           .doc(flashcardSetId)
           .update({
-            'title': title,
-            'flashcards': flashcards.map((f) => f.toFirestore()).toList(),
-            'timestamp': timestamp,
-          });
+        'title': title,
+        'flashcards': flashcards.map((f) => f.toFirestore()).toList(),
+        'timestamp': timestamp,
+      });
       await _localDb.updateFlashcardSetSyncStatus(flashcardSetId, true);
     } catch (e) {
       debugPrint('Error updating flashcard set in Firestore: $e');
@@ -293,7 +318,12 @@ class FirestoreService {
   }
 
   Future<void> deleteFlashcardSet(String userId, String flashcardSetId) async {
-    await _db.collection('users').doc(userId).collection('flashcard_sets').doc(flashcardSetId).delete();
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('flashcard_sets')
+        .doc(flashcardSetId)
+        .delete();
     await _localDb.deleteFlashcardSet(flashcardSetId);
   }
 
@@ -301,13 +331,28 @@ class FirestoreService {
     DocumentSnapshot doc;
     switch (item.type) {
       case LibraryItemType.summary:
-        doc = await _db.collection('users').doc(userId).collection('summaries').doc(item.id).get();
+        doc = await _db
+            .collection('users')
+            .doc(userId)
+            .collection('summaries')
+            .doc(item.id)
+            .get();
         return Summary.fromFirestore(doc);
       case LibraryItemType.quiz:
-        doc = await _db.collection('users').doc(userId).collection('quizzes').doc(item.id).get();
+        doc = await _db
+            .collection('users')
+            .doc(userId)
+            .collection('quizzes')
+            .doc(item.id)
+            .get();
         return Quiz.fromFirestore(doc);
       case LibraryItemType.flashcards:
-        doc = await _db.collection('users').doc(userId).collection('flashcard_sets').doc(item.id).get();
+        doc = await _db
+            .collection('users')
+            .doc(userId)
+            .collection('flashcard_sets')
+            .doc(item.id)
+            .get();
         return FlashcardSet.fromFirestore(doc);
     }
   }

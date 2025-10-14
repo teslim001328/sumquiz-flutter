@@ -14,6 +14,20 @@ class FlashcardSet {
     required this.timestamp,
   });
 
+  FlashcardSet copyWith({
+    String? id,
+    String? title,
+    List<Flashcard>? flashcards,
+    Timestamp? timestamp,
+  }) {
+    return FlashcardSet(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      flashcards: flashcards ?? this.flashcards,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
   factory FlashcardSet.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
     return FlashcardSet(
@@ -29,7 +43,8 @@ class FlashcardSet {
   Map<String, dynamic> toFirestore() {
     return {
       'title': title,
-      'flashcards': flashcards.map((flashcard) => flashcard.toFirestore()).toList(),
+      'flashcards':
+          flashcards.map((flashcard) => flashcard.toFirestore()).toList(),
       'timestamp': timestamp,
     };
   }

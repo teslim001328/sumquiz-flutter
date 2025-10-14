@@ -23,7 +23,8 @@ class LibraryScreen extends StatefulWidget {
   LibraryScreenState createState() => LibraryScreenState();
 }
 
-class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderStateMixin {
+class LibraryScreenState extends State<LibraryScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FirestoreService _firestoreService = FirestoreService();
   final LocalDatabaseService _localDb = LocalDatabaseService();
@@ -58,10 +59,16 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
 
   void _initializeStreams(String userId) {
     setState(() {
-      _allItemsStream = _firestoreService.streamAllItems(userId).asBroadcastStream();
-      _summariesStream = _firestoreService.streamItems(userId, 'summaries').asBroadcastStream();
-      _quizzesStream = _firestoreService.streamItems(userId, 'quizzes').asBroadcastStream();
-      _flashcardsStream = _firestoreService.streamItems(userId, 'flashcards').asBroadcastStream();
+      _allItemsStream =
+          _firestoreService.streamAllItems(userId).asBroadcastStream();
+      _summariesStream = _firestoreService
+          .streamItems(userId, 'summaries')
+          .asBroadcastStream();
+      _quizzesStream =
+          _firestoreService.streamItems(userId, 'quizzes').asBroadcastStream();
+      _flashcardsStream = _firestoreService
+          .streamItems(userId, 'flashcards')
+          .asBroadcastStream();
     });
   }
 
@@ -73,7 +80,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     super.dispose();
   }
 
-  void _onSearchChanged() => setState(() => _searchQuery = _searchController.text.toLowerCase());
+  void _onSearchChanged() =>
+      setState(() => _searchQuery = _searchController.text.toLowerCase());
 
   Future<void> _loadOfflineModePreference() async {
     final isOffline = await _localDb.isOfflineModeEnabled();
@@ -95,7 +103,10 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
       body: user == null ? _buildLoggedOutView() : _buildLibraryContent(user),
       floatingActionButton: user != null && !_isOfflineMode
           ? FloatingActionButton(
-              onPressed: () => showModalBottomSheet(context: context, builder: (context) => const AddContentModal(), isScrollControlled: true),
+              onPressed: () => showModalBottomSheet(
+                  context: context,
+                  builder: (context) => const AddContentModal(),
+                  isScrollControlled: true),
               backgroundColor: Colors.grey[800],
               child: const Icon(Icons.add),
             )
@@ -107,7 +118,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     return AppBar(
       backgroundColor: Colors.black,
       elevation: 0,
-      title: Text('Library', style: GoogleFonts.oswald(fontWeight: FontWeight.bold, fontSize: 24)),
+      title: Text('Library',
+          style: GoogleFonts.oswald(fontWeight: FontWeight.bold, fontSize: 24)),
       centerTitle: true,
       actions: [
         IconButton(
@@ -127,12 +139,17 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
           children: [
             const Icon(Icons.cloud_off_outlined, size: 80, color: Colors.grey),
             const SizedBox(height: 24),
-            Text('Please Log In', style: GoogleFonts.oswald(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text('Please Log In',
+                style: GoogleFonts.oswald(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 12),
             Text(
               'Log in to access your synchronized library across all your devices.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: GoogleFonts.roboto(
+                  fontSize: 16, color: Colors.grey[400], height: 1.5),
             ),
           ],
         ),
@@ -147,14 +164,20 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.signal_wifi_off_outlined, size: 80, color: Colors.grey),
+            const Icon(Icons.signal_wifi_off_outlined,
+                size: 80, color: Colors.grey),
             const SizedBox(height: 24),
-            Text('Offline Mode', style: GoogleFonts.oswald(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text('Offline Mode',
+                style: GoogleFonts.oswald(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 12),
             Text(
               'You are currently in offline mode. Only locally stored content is available. Turn off offline mode in settings to sync with the cloud.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: GoogleFonts.roboto(
+                  fontSize: 16, color: Colors.grey[400], height: 1.5),
             ),
           ],
         ),
@@ -199,7 +222,9 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
               filled: true,
               fillColor: Colors.grey[900],
               contentPadding: const EdgeInsets.symmetric(vertical: 15.0),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none),
             ),
           ),
           const SizedBox(height: 16),
@@ -219,7 +244,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
         Tab(text: 'Quizzes'),
         Tab(text: 'Flashcards'),
       ],
-      indicator: BoxDecoration(borderRadius: BorderRadius.circular(30), color: Colors.grey[800]),
+      indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(30), color: Colors.grey[800]),
       labelStyle: GoogleFonts.roboto(fontWeight: FontWeight.bold),
       unselectedLabelColor: Colors.grey[400],
       labelColor: Colors.white,
@@ -231,10 +257,13 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     return StreamBuilder<Map<String, List<LibraryItem>>>(
       stream: _allItemsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || snapshot.data == null || snapshot.data!.values.every((list) => list.isEmpty)) {
+        if (!snapshot.hasData ||
+            snapshot.data == null ||
+            snapshot.data!.values.every((list) => list.isEmpty)) {
           return _buildNoContentState('all');
         }
 
@@ -245,14 +274,18 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     );
   }
 
-  Widget _buildLibraryList(String userId, String type, Stream<List<LibraryItem>>? stream) {
+  Widget _buildLibraryList(
+      String userId, String type, Stream<List<LibraryItem>>? stream) {
     return StreamBuilder<List<LibraryItem>>(
       stream: stream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData || snapshot.data == null || snapshot.data!.isEmpty) {
+        if (!snapshot.hasData ||
+            snapshot.data == null ||
+            snapshot.data!.isEmpty) {
           return _buildNoContentState(type);
         }
 
@@ -271,7 +304,9 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
       if (items.isNotEmpty && _searchQuery.isNotEmpty) {
         return _buildNoSearchResultsState();
       }
-      return _buildNoContentState(_tabController.index == 0 ? 'all' : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1]);
+      return _buildNoContentState(_tabController.index == 0
+          ? 'all'
+          : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1]);
     }
 
     return ListView.builder(
@@ -302,13 +337,23 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title, style: GoogleFonts.roboto(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(item.title,
+                        style: GoogleFonts.roboto(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(item.type.toString().split('.').last, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                    Text(item.type.toString().split('.').last,
+                        style:
+                            TextStyle(color: Colors.grey[400], fontSize: 12)),
                   ],
                 ),
               ),
-              IconButton(icon: const Icon(Icons.more_horiz, color: Colors.white), onPressed: () => _showItemMenu(userId, item)),
+              IconButton(
+                  icon: const Icon(Icons.more_horiz, color: Colors.white),
+                  onPressed: () => _showItemMenu(userId, item)),
             ],
           ),
         ),
@@ -337,12 +382,18 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
           children: [
             const Icon(Icons.school_outlined, size: 100, color: Colors.grey),
             const SizedBox(height: 24),
-            Text('No $typeName yet', style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text('No $typeName yet',
+                style: GoogleFonts.oswald(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 12),
             Text(
-              'Tap the '+' button to create your first set of study materials!',
+              'Tap the ' +
+                  ' button to create your first set of study materials!',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: GoogleFonts.roboto(
+                  fontSize: 16, color: Colors.grey[400], height: 1.5),
             ),
           ],
         ),
@@ -357,14 +408,20 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off_outlined, size: 100, color: Colors.grey),
+            const Icon(Icons.search_off_outlined,
+                size: 100, color: Colors.grey),
             const SizedBox(height: 24),
-            Text('No Results Found', style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text('No Results Found',
+                style: GoogleFonts.oswald(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 12),
             Text(
               'Your search for "$_searchQuery" did not match any content. Try a different search term.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: GoogleFonts.roboto(
+                  fontSize: 16, color: Colors.grey[400], height: 1.5),
             ),
           ],
         ),
@@ -378,22 +435,30 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.grey[900],
-          title: Text('Settings', style: GoogleFonts.oswald(color: Colors.white)),
+          title:
+              Text('Settings', style: GoogleFonts.oswald(color: Colors.white)),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               return SwitchListTile(
-                title: const Text('Offline Mode', style: TextStyle(color: Colors.white)),
+                title: const Text('Offline Mode',
+                    style: TextStyle(color: Colors.white)),
                 value: _isOfflineMode,
                 onChanged: (bool value) {
                   _setOfflineMode(value);
                   setState(() {});
                   Navigator.of(context).pop();
                 },
-                secondary: const Icon(Icons.signal_wifi_off_outlined, color: Colors.white),
+                secondary: const Icon(Icons.signal_wifi_off_outlined,
+                    color: Colors.white),
               );
             },
           ),
-          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close', style: TextStyle(color: Colors.white)))],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child:
+                    const Text('Close', style: TextStyle(color: Colors.white)))
+          ],
         );
       },
     );
@@ -403,18 +468,26 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Wrap(
         children: [
           ListTile(
             leading: const Icon(Icons.edit_outlined, color: Colors.white),
             title: const Text('Edit', style: TextStyle(color: Colors.white)),
-            onTap: () { Navigator.pop(context); _editContent(userId, item); },
+            onTap: () {
+              Navigator.pop(context);
+              _editContent(userId, item);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-            title: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
-            onTap: () { Navigator.pop(context); _deleteContent(userId, item); },
+            title:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            onTap: () {
+              Navigator.pop(context);
+              _deleteContent(userId, item);
+            },
           ),
         ],
       ),
@@ -423,7 +496,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
 
   Future<void> _navigateToContent(String userId, LibraryItem item) async {
     if (_isOfflineMode) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigation is disabled in offline mode.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Navigation is disabled in offline mode.')));
       return;
     }
     final content = await _firestoreService.getSpecificItem(userId, item);
@@ -446,7 +520,8 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
 
   Future<void> _editContent(String userId, LibraryItem item) async {
     if (_isOfflineMode) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Editing is disabled in offline mode.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Editing is disabled in offline mode.')));
       return;
     }
     final content = await _firestoreService.getSpecificItem(userId, item);
@@ -456,41 +531,58 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     switch (item.type) {
       case LibraryItemType.summary:
         final summary = content as Summary;
-        editableContent = EditableContent.fromSummary(summary.id, summary.title, summary.content, summary.tags, summary.timestamp);
+        editableContent = EditableContent.fromSummary(summary.id, summary.title,
+            summary.content, summary.tags, summary.timestamp);
         break;
       case LibraryItemType.quiz:
         final quiz = content as Quiz;
-        editableContent = EditableContent.fromQuiz(quiz.id, quiz.title, quiz.questions, quiz.timestamp);
+        editableContent = EditableContent.fromQuiz(
+            quiz.id, quiz.title, quiz.questions, quiz.timestamp);
         break;
       case LibraryItemType.flashcards:
         final flashcardSet = content as FlashcardSet;
-        editableContent = EditableContent.fromFlashcardSet(flashcardSet.id, flashcardSet.title, flashcardSet.flashcards, flashcardSet.timestamp);
+        editableContent = EditableContent.fromFlashcardSet(
+            flashcardSet.id,
+            flashcardSet.title,
+            flashcardSet.flashcards,
+            flashcardSet.timestamp);
         break;
     }
-    Navigator.push(context, MaterialPageRoute(builder: (context) => EditContentScreen(content: editableContent)));
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => EditContentScreen(content: editableContent)));
   }
 
   Future<void> _deleteContent(String userId, LibraryItem item) async {
     if (_isOfflineMode) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deletion is disabled in offline mode.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Deletion is disabled in offline mode.')));
       return;
     }
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Content'),
-        content: const Text('Are you sure you want to delete this item?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Content'),
+            content: const Text('Are you sure you want to delete this item?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Delete',
+                      style: TextStyle(color: Colors.redAccent))),
+            ],
+          ),
+        ) ??
+        false;
 
     if (confirmed) {
       await _firestoreService.deleteItem(userId, item);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item deleted')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Item deleted')));
       }
     }
   }

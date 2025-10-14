@@ -1,126 +1,329 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
-import 'package:flutter/foundation.dart' hide Summary;
-import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:myapp/models/summary_model.dart' as model_summary;
 
-import '../models/summary_model.dart';
+import '../models/flashcard.dart';
 import '../models/quiz_model.dart';
 import '../models/quiz_question.dart';
+import 'dart:developer' as developer;
+
+class AIServiceException implements Exception {
+  final String message;
+  AIServiceException(this.message);
+  @override
+  String toString() => message;
+}
+
+class AIConfig {
+  static const String textModel = 'gemini-1.5-flash';
+  static const String visionModel = 'gemini-1.5-flash';
+  static const int maxRetries = 3;
+  static const int requestTimeout = 30;
+  static const int maxInputLength = 10000;
+  static const int maxPdfSize = 10 * 1024 * 1024; // 10MB limit
+}
 
 class AIService {
-  // Use the new FirebaseAI.googleAI() factory
-  final GenerativeModel _model;
+  final FirebaseAI _firebaseAI;
+  final ImagePicker _imagePicker;
 
-  // Initialize the model in the constructor with a specific model name
-  AIService() : _model = FirebaseAI.googleAI().generativeModel(model: 'gemini-1.5-flash');
+  AIService({FirebaseAI? firebaseAI, ImagePicker? imagePicker})
+      : _firebaseAI = firebaseAI ?? FirebaseAI.vertexAI(),
+        _imagePicker = imagePicker ?? ImagePicker();
 
-  /// Generates a summary from the given text and/or PDF document.
-  Future<String> generateSummary(String text, {Uint8List? pdfBytes}) async {
+  GenerativeModel _createModel(String modelName) {
+    return _firebaseAI.generativeModel(
+      model: modelName,
+      safetySettings: [
+        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium,
+            HarmBlockMethod.severity),
+        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium,
+            HarmBlockMethod.severity),
+        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.medium,
+            HarmBlockMethod.severity),
+        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.medium,
+            HarmBlockMethod.severity),
+      ],
+      generationConfig: GenerationConfig(
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 2048,
+      ),
+    );
+  }
+
+  Future<T> _retryWithBackoff<T>(Future<T> Function() operation,
+      {int maxRetries = AIConfig.maxRetries}) async {
+    int attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        return await operation();
+      } on TimeoutException {
+        throw AIServiceException('Request timed out. Please try again.');
+      } catch (e) {
+        attempt++;
+        if (attempt >= maxRetries) rethrow;
+        final delay = Duration(seconds: pow(2, attempt).toInt());
+        developer.log('Retry attempt $attempt after $delay',
+            name: 'my_app.ai_service');
+        await Future.delayed(delay);
+      }
+    }
+    throw Exception('Max retries exceeded');
+  }
+
+  String _cleanJsonResponse(String text) {
+    text = text
+        .replaceAll(RegExp(r'```json\s*'), '')
+        .replaceAll(RegExp(r'```\s*$'), '');
+    text = text.replaceAll('```', '').trim();
     try {
-      final List<Part> parts = [];
-
-      if (pdfBytes != null) {
-        parts.add(DataPart('application/pdf', pdfBytes));
-      }
-      if (text.isNotEmpty) {
-        parts.add(TextPart(text));
-      }
-
-      if (parts.isEmpty) {
-        return "Error: No content provided. Please enter text or upload a PDF.";
-      }
-
-      final response = await _model.generateContent([
-        Content.multi(parts),
-        Content.text(
-            'Summarize the provided content. Extract the main title, a list of relevant tags, and the summary content. Return a JSON object with "title", "tags", and "content" keys. Do not include markdown formatting.'),
-      ]);
-
-      if (response.text == null) {
-        return "Error: Could not generate a summary from the provided content. The model returned no response.";
-      }
-
-      developer.log('AI Summary Response: ${response.text}', name: 'my_app.ai_service');
-
-      // The response should be a clean JSON string, ready for parsing.
-      return response.text!;
-
-    } catch (e, s) {
-      developer.log('Error generating summary', name: 'my_app.ai_service', error: e, stackTrace: s);
-      // Return a JSON-formatted error
-      return jsonEncode({
-        'error': 'An unexpected error occurred while generating the summary. Please check the logs.',
-      });
+      json.decode(text);
+      return text;
+    } catch (e) {
+      throw FormatException('Response is not valid JSON: $text');
     }
   }
 
-  /// Generates a quiz from a given summary.
-  Future<Quiz> generateQuizFromSummary(Summary summary) async {
-    try {
-      const promptText =
-          'Based on the following summary, generate a 10-question multiple-choice quiz. '
-          'For each question, provide 4 options and indicate the correct answer. '
-          'Return the quiz as a single, clean JSON object with a "title" and a "questions" array. '
-          'Each question object should have "question", "options", and "correctAnswer" keys. '
-          'The options should be an array of strings. The correctAnswer should be one of those strings. '
-          'Do not include any markdown formatting (like ```json) in your response. Just the raw JSON.';
+  String _sanitizeInput(String input) {
+    return input
+        .replaceAll(RegExp(r'[\n\r]+'), ' ')
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .trim();
+  }
 
-      final response = await _model.generateContent([
-        Content.text(promptText),
-        Content.text('Summary: ${summary.content}'),
-      ]);
+  Future<String> getSuggestion(String text) async {
+    if (text.trim().isEmpty) {
+      throw AIServiceException('Cannot provide suggestions for empty text.');
+    }
+    if (text.length > AIConfig.maxInputLength) {
+      throw AIServiceException(
+          'Text too long. Maximum length is ${AIConfig.maxInputLength} characters.');
+    }
+
+    final model = _createModel(AIConfig.textModel);
+    final prompt =
+        'Provide a suggestion to improve the following text: ${_sanitizeInput(text)}';
+
+    try {
+      final response = await _retryWithBackoff(() => model
+          .generateContent([Content.text(prompt)]).timeout(
+              const Duration(seconds: AIConfig.requestTimeout)));
+      if (response.text == null || response.text!.isEmpty) {
+        throw AIServiceException('Model returned empty response.');
+      }
+      return response.text!;
+    } on TimeoutException {
+      throw AIServiceException('Request timed out. Please try again.');
+    } catch (e) {
+      if (e.toString().contains('quota')) {
+        throw AIServiceException('API quota exceeded. Please try again later.');
+      } else if (e.toString().contains('permission')) {
+        throw AIServiceException(
+            'Permission denied. Check Firebase configuration.');
+      }
+      developer.log('Error getting suggestion',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException('Failed to get suggestion: ${e.toString()}');
+    }
+  }
+
+  Future<String> generateSummary(String text, {Uint8List? pdfBytes}) async {
+    if (pdfBytes != null) {
+      if (pdfBytes.length > AIConfig.maxPdfSize) {
+        throw AIServiceException('PDF file too large. Maximum size is 10MB.');
+      }
+      try {
+        final PdfDocument document = PdfDocument(inputBytes: pdfBytes);
+        text = PdfTextExtractor(document).extractText();
+        document.dispose();
+      } catch (e) {
+        throw AIServiceException(
+            'Failed to extract text from PDF: ${e.toString()}');
+      }
+    }
+
+    if (text.trim().isEmpty) {
+      throw AIServiceException('No text provided for summary generation.');
+    }
+    if (text.length > AIConfig.maxInputLength) {
+      throw AIServiceException(
+          'Text too long. Maximum length is ${AIConfig.maxInputLength} characters.');
+    }
+
+    final model = _createModel(AIConfig.textModel);
+    final prompt =
+        'Summarize the following text, and provide a title and three relevant tags in JSON format: { "title": "...", "content": "...", "tags": ["...", "...", "..."] }. Text: ${_sanitizeInput(text)}';
+
+    try {
+      final response = await _retryWithBackoff(() => model
+          .generateContent([Content.text(prompt)]).timeout(
+              const Duration(seconds: AIConfig.requestTimeout)));
+      if (response.text == null || response.text!.isEmpty) {
+        throw AIServiceException('Model returned empty response.');
+      }
+      final jsonString = _cleanJsonResponse(response.text!);
+      return jsonString;
+    } on FormatException catch (e) {
+      developer.log('JSON parsing error in summary',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException(
+          'Failed to parse summary data. Please try again.');
+    } on TimeoutException {
+      throw AIServiceException('Request timed out. Please try again.');
+    } catch (e) {
+      if (e.toString().contains('quota')) {
+        throw AIServiceException('API quota exceeded. Please try again later.');
+      } else if (e.toString().contains('permission')) {
+        throw AIServiceException(
+            'Permission denied. Check Firebase configuration.');
+      }
+      developer.log('Error generating summary',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException('Failed to generate summary: ${e.toString()}');
+    }
+  }
+
+  Future<List<Flashcard>> generateFlashcards(
+      model_summary.Summary summary) async {
+    final model = _createModel(AIConfig.textModel);
+    final prompt =
+        'Based on the following summary, generate a list of flashcards in JSON format: { "flashcards": [{"question": "...", "answer": "..."}] }. Summary: ${_sanitizeInput(summary.content)}';
+
+    try {
+      final response = await _retryWithBackoff(() => model
+          .generateContent([Content.text(prompt)]).timeout(
+              const Duration(seconds: AIConfig.requestTimeout)));
+      if (response.text != null) {
+        final jsonString = _cleanJsonResponse(response.text!);
+        final decoded = json.decode(jsonString);
+        final flashcardsData = decoded['flashcards'] as List;
+
+        return flashcardsData.map((data) {
+          return Flashcard(
+            question: data['question'] as String,
+            answer: data['answer'] as String,
+          );
+        }).toList();
+      } else {
+        return [];
+      }
+    } on FormatException catch (e) {
+      developer.log('JSON parsing error in flashcards',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException(
+          'Failed to parse flashcard data. Please try again.');
+    } on TimeoutException {
+      throw AIServiceException('Request timed out. Please try again.');
+    } catch (e) {
+      if (e.toString().contains('quota')) {
+        throw AIServiceException('API quota exceeded. Please try again later.');
+      } else if (e.toString().contains('permission')) {
+        throw AIServiceException(
+            'Permission denied. Check Firebase configuration.');
+      }
+      developer.log('Error generating flashcards',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException(
+          'Failed to generate flashcards: ${e.toString()}');
+    }
+  }
+
+  Future<Quiz> generateQuizFromSummary(model_summary.Summary summary) async {
+    final model = _createModel(AIConfig.textModel);
+    final prompt =
+        'Create a multiple-choice quiz from this summary: ${_sanitizeInput(summary.content)}. Return in JSON format: { "title": "Quiz Title", "questions": [ { "question": "What is...?", "options": ["A", "B", "C", "D"], "correctAnswer": "A" } ] }';
+
+    try {
+      final response = await _retryWithBackoff(() => model
+          .generateContent([Content.text(prompt)]).timeout(
+              const Duration(seconds: AIConfig.requestTimeout)));
 
       if (response.text == null) {
-        throw Exception('Failed to generate quiz: Model returned no response.');
+        throw AIServiceException(
+            'Failed to generate quiz: No response from model');
       }
 
-      developer.log('AI Quiz Response: ${response.text}', name: 'my_app.ai_service');
+      final jsonString = _cleanJsonResponse(response.text!);
+      final decoded = json.decode(jsonString);
+      final quizData = decoded as Map<String, dynamic>;
+      final questionsData = quizData['questions'] as List;
 
-      final quizData = json.decode(response.text!) as Map<String, dynamic>;
-
-      final questions = (quizData['questions'] as List<dynamic>).map((q) {
-        final options = (q['options'] as List<dynamic>).cast<String>();
-        final correctAnswer = q['correctAnswer'] as String;
-
-        if (!options.contains(correctAnswer)) {
-          options[0] = correctAnswer;
-        }
-
+      final questions = questionsData.map((data) {
+        final questionText = data['question'] as String;
+        final options = List<String>.from(data['options'] as List);
+        final correctAnswer = data['correctAnswer'] as String;
         return QuizQuestion(
-          question: q['question'] as String,
+          question: questionText,
           options: options,
           correctAnswer: correctAnswer,
         );
       }).toList();
 
       return Quiz(
-        id: '', // Firestore will generate this
+        id: '',
         userId: summary.userId,
         title: quizData['title'] as String,
         questions: questions,
-        timestamp: DateTime.now(),
+        timestamp: Timestamp.now(),
       );
+    } on FormatException catch (e) {
+      developer.log('JSON parsing error in quiz',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException('Failed to parse quiz data. Please try again.');
+    } on TimeoutException {
+      throw AIServiceException('Request timed out. Please try again.');
     } catch (e, s) {
-      developer.log('Error generating quiz', name: 'my_app.ai_service', error: e, stackTrace: s);
-      rethrow;
+      if (e.toString().contains('quota')) {
+        throw AIServiceException('API quota exceeded. Please try again later.');
+      } else if (e.toString().contains('permission')) {
+        throw AIServiceException(
+            'Permission denied. Check Firebase configuration.');
+      }
+      developer.log('Error generating quiz',
+          name: 'my_app.ai_service', error: e, stackTrace: s);
+      throw AIServiceException('Failed to generate quiz: ${e.toString()}');
     }
   }
 
-  /// Provides AI-powered suggestions for improving a piece of text.
-  Future<String> getSuggestion(String text) async {
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network latency
-    if (text.isEmpty) {
-      return 'Start writing to get suggestions!';
+  Future<Uint8List?> pickImage() async {
+    final pickedFile =
+        await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      return await pickedFile.readAsBytes();
     }
-    
+    return null;
+  }
+
+  Future<String> describeImage(Uint8List imageBytes) async {
+    final model = _createModel(AIConfig.visionModel);
+    final imagePart = InlineDataPart('image/jpeg', imageBytes);
+    final prompt = 'Describe this image.';
     try {
-      final response = await _model.generateContent([
-        Content.text('Given the following text, provide a concise suggestion to improve it: "$text"'),
-      ]);
-      return response.text ?? 'No suggestion available.';
+      final response = await _retryWithBackoff(() => model.generateContent([
+            Content('user', [TextPart(prompt), imagePart])
+          ]).timeout(const Duration(seconds: AIConfig.requestTimeout)));
+      return response.text ?? 'Could not describe image.';
+    } on TimeoutException {
+      throw AIServiceException('Request timed out. Please try again.');
     } catch (e) {
-      return 'Error getting suggestion: $e';
+      if (e.toString().contains('quota')) {
+        throw AIServiceException('API quota exceeded. Please try again later.');
+      } else if (e.toString().contains('permission')) {
+        throw AIServiceException(
+            'Permission denied. Check Firebase configuration.');
+      }
+      developer.log('Error describing image',
+          name: 'my_app.ai_service', error: e);
+      throw AIServiceException('Failed to describe image: ${e.toString()}');
     }
   }
 }

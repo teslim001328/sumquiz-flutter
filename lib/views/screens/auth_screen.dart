@@ -29,7 +29,8 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void _switchAuthMode() {
     setState(() {
-      _authMode = _authMode == AuthMode.Login ? AuthMode.SignUp : AuthMode.Login;
+      _authMode =
+          _authMode == AuthMode.Login ? AuthMode.SignUp : AuthMode.Login;
     });
   }
 

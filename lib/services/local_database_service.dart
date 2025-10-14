@@ -26,7 +26,8 @@ class LocalDatabaseService {
   late Box<SpacedRepetitionItem> _spacedRepetitionBox;
   late Box _settingsBox;
 
-  static final LocalDatabaseService _instance = LocalDatabaseService._internal();
+  static final LocalDatabaseService _instance =
+      LocalDatabaseService._internal();
   factory LocalDatabaseService() => _instance;
   LocalDatabaseService._internal();
 
@@ -37,24 +38,34 @@ class LocalDatabaseService {
 
     try {
       await Hive.initFlutter();
-      
-      if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(LocalSummaryAdapter());
-      if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(LocalQuizAdapter());
-      if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(LocalQuizQuestionAdapter());
-      if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(LocalFlashcardAdapter());
-      if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(LocalFlashcardSetAdapter());
+
+      if (!Hive.isAdapterRegistered(0))
+        Hive.registerAdapter(LocalSummaryAdapter());
+      if (!Hive.isAdapterRegistered(1))
+        Hive.registerAdapter(LocalQuizAdapter());
+      if (!Hive.isAdapterRegistered(2))
+        Hive.registerAdapter(LocalQuizQuestionAdapter());
+      if (!Hive.isAdapterRegistered(3))
+        Hive.registerAdapter(LocalFlashcardAdapter());
+      if (!Hive.isAdapterRegistered(4))
+        Hive.registerAdapter(LocalFlashcardSetAdapter());
       if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(FolderAdapter());
-      if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(ContentFolderAdapter());
-      if (!Hive.isAdapterRegistered(8)) Hive.registerAdapter(SpacedRepetitionItemAdapter());
-      
+      if (!Hive.isAdapterRegistered(6))
+        Hive.registerAdapter(ContentFolderAdapter());
+      if (!Hive.isAdapterRegistered(8))
+        Hive.registerAdapter(SpacedRepetitionItemAdapter());
+
       _summariesBox = await Hive.openBox<LocalSummary>(_summariesBoxName);
       _quizzesBox = await Hive.openBox<LocalQuiz>(_quizzesBoxName);
-      _flashcardSetsBox = await Hive.openBox<LocalFlashcardSet>(_flashcardSetsBoxName);
+      _flashcardSetsBox =
+          await Hive.openBox<LocalFlashcardSet>(_flashcardSetsBoxName);
       _foldersBox = await Hive.openBox<Folder>(_foldersBoxName);
-      _contentFoldersBox = await Hive.openBox<ContentFolder>(_contentFoldersBoxName);
-      _spacedRepetitionBox = await Hive.openBox<SpacedRepetitionItem>(_spacedRepetitionBoxName);
+      _contentFoldersBox =
+          await Hive.openBox<ContentFolder>(_contentFoldersBoxName);
+      _spacedRepetitionBox =
+          await Hive.openBox<SpacedRepetitionItem>(_spacedRepetitionBoxName);
       _settingsBox = await Hive.openBox(_settingsBoxName);
-      
+
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error initializing local database: $e');
@@ -119,9 +130,7 @@ class LocalDatabaseService {
   }
 
   Future<List<LocalQuiz>> getAllQuizzes(String userId) async {
-    return _quizzesBox.values
-        .where((quiz) => quiz.userId == userId)
-        .toList();
+    return _quizzesBox.values.where((quiz) => quiz.userId == userId).toList();
   }
 
   Future<void> deleteQuiz(String id) async {
@@ -192,7 +201,8 @@ class LocalDatabaseService {
   }
 
   // Content-Folder relationship operations
-  Future<void> assignContentToFolder(String contentId, String folderId, String contentType, String userId) async {
+  Future<void> assignContentToFolder(String contentId, String folderId,
+      String contentType, String userId) async {
     final contentFolder = ContentFolder(
       contentId: contentId,
       folderId: folderId,
@@ -215,11 +225,12 @@ class LocalDatabaseService {
         .toList();
   }
 
-  Future<void> removeContentFromFolder(String contentId, String folderId) async {
+  Future<void> removeContentFromFolder(
+      String contentId, String folderId) async {
     final contentFolders = _contentFoldersBox.values
         .where((cf) => cf.contentId == contentId && cf.folderId == folderId)
         .toList();
-    
+
     for (final cf in contentFolders) {
       await _contentFoldersBox.delete(cf.key);
     }
@@ -237,15 +248,15 @@ class LocalDatabaseService {
     final unsyncedSummaries = _summariesBox.values
         .where((s) => s.userId == userId && !s.isSynced)
         .length;
-    
+
     final unsyncedQuizzes = _quizzesBox.values
         .where((q) => q.userId == userId && !q.isSynced)
         .length;
-    
+
     final unsyncedFlashcardSets = _flashcardSetsBox.values
         .where((fs) => fs.userId == userId && !fs.isSynced)
         .length;
-    
+
     return unsyncedSummaries + unsyncedQuizzes + unsyncedFlashcardSets;
   }
 
@@ -258,15 +269,18 @@ class LocalDatabaseService {
     return _spacedRepetitionBox.get(id);
   }
 
-  Future<List<SpacedRepetitionItem>> getAllSpacedRepetitionItems(String userId) async {
+  Future<List<SpacedRepetitionItem>> getAllSpacedRepetitionItems(
+      String userId) async {
     return _spacedRepetitionBox.values
         .where((item) => item.userId == userId)
         .toList();
   }
 
-  Future<List<SpacedRepetitionItem>> getDueSpacedRepetitionItems(String userId, DateTime now) async {
+  Future<List<SpacedRepetitionItem>> getDueSpacedRepetitionItems(
+      String userId, DateTime now) async {
     return _spacedRepetitionBox.values
-        .where((item) => item.userId == userId && item.nextReviewDate.isBefore(now))
+        .where((item) =>
+            item.userId == userId && item.nextReviewDate.isBefore(now))
         .toList();
   }
 

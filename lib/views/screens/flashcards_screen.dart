@@ -12,6 +12,7 @@ import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
 import '../../models/flashcard.dart';
 import '../../models/flashcard_set.dart';
+import '../../models/summary_model.dart';
 import '../widgets/upgrade_modal.dart';
 
 class FlashcardsScreen extends StatefulWidget {
@@ -56,18 +57,21 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
   Future<void> _generateFlashcards() async {
     if (_titleController.text.isEmpty || _textController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in both the title and content fields.')),
+        const SnackBar(
+            content: Text('Please fill in both the title and content fields.')),
       );
       return;
     }
 
     final userModel = Provider.of<UserModel?>(context, listen: false);
     if (userModel == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('User not found.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('User not found.')));
       return;
     }
 
-    final canGenerate = await _firestoreService.canGenerate(userModel.uid, 'flashcards');
+    final canGenerate =
+        await _firestoreService.canGenerate(userModel.uid, 'flashcards');
     if (!canGenerate) {
       if (mounted) _showUpgradeDialog();
       return;
@@ -76,8 +80,16 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      developer.log('Generating flashcards for content...', name: 'flashcards.generation');
-      final cards = await _aiService.generateFlashcards(_textController.text);
+      developer.log('Generating flashcards for content...',
+          name: 'flashcards.generation');
+      final summary = Summary(
+        id: '', // Temporary ID
+        userId: userModel.uid,
+        title: _titleController.text,
+        content: _textController.text,
+        timestamp: Timestamp.now(),
+      );
+      final cards = await _aiService.generateFlashcards(summary);
 
       if (cards.isNotEmpty) {
         await _firestoreService.incrementUsage(userModel.uid, 'flashcards');
@@ -86,7 +98,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
             _flashcards = cards;
             _isLoading = false;
           });
-          developer.log('${cards.length} flashcards generated successfully.', name: 'flashcards.generation');
+          developer.log('${cards.length} flashcards generated successfully.',
+              name: 'flashcards.generation');
         }
       } else {
         if (mounted) {
@@ -95,11 +108,13 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Could not generate flashcards from the provided content. Please try again with different text.'),
+              content: Text(
+                  'Could not generate flashcards from the provided content. Please try again with different text.'),
               backgroundColor: Colors.orange,
             ),
           );
-          developer.log('AI service returned an empty list of flashcards.', name: 'flashcards.generation');
+          developer.log('AI service returned an empty list of flashcards.',
+              name: 'flashcards.generation');
         }
       }
     } catch (e, s) {
@@ -108,9 +123,11 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         if (e.toString().contains('quota')) {
           _showUpgradeDialog();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generating flashcards: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error generating flashcards: $e')));
         }
-        developer.log('Error generating flashcards', name: 'flashcards.generation', error: e, stackTrace: s);
+        developer.log('Error generating flashcards',
+            name: 'flashcards.generation', error: e, stackTrace: s);
       }
     }
   }
@@ -126,7 +143,9 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
 
     if (_flashcards.isEmpty || _titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cannot save an empty set or a set without a title.')),
+        const SnackBar(
+            content:
+                Text('Cannot save an empty set or a set without a title.')),
       );
       return;
     }
@@ -152,7 +171,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         );
       }
     } catch (e, s) {
-      developer.log('Error saving flashcard set', name: 'flashcards.save', error: e, stackTrace: s);
+      developer.log('Error saving flashcard set',
+          name: 'flashcards.save', error: e, stackTrace: s);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving set: $e')),
@@ -164,7 +184,6 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       }
     }
   }
-
 
   void _showUpgradeDialog() {
     showModalBottomSheet(
@@ -179,7 +198,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     _swiperController.swipe(CardSwiperDirection.right);
   }
 
-  bool _onSwipe(int previousIndex, int? currentIndex, CardSwiperDirection direction) {
+  bool _onSwipe(
+      int previousIndex, int? currentIndex, CardSwiperDirection direction) {
     if (currentIndex == null) {
       setState(() => _isReviewFinished = true);
     } else {
@@ -225,7 +245,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           if (_isLoading)
             Container(
               color: Colors.black.withAlpha(179), // 0.7 opacity
-              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+              child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white)),
             ),
         ],
       ),
@@ -247,14 +268,22 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          const Text('Create Flashcards', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const Text('Create Flashcards',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 24),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Set Title', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                  const Text('Set Title',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _titleController,
@@ -264,11 +293,17 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                       hintStyle: TextStyle(color: Colors.grey[600]),
                       filled: true,
                       fillColor: Colors.grey[900],
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Content', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                  const Text('Content',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _textController,
@@ -279,7 +314,9 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                       hintStyle: TextStyle(color: Colors.grey[600]),
                       filled: true,
                       fillColor: Colors.grey[900],
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none),
                     ),
                   ),
                 ],
@@ -296,9 +333,12 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 20),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Generate Flashcards', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text('Generate Flashcards',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ),
@@ -318,8 +358,14 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
               children: [
                 Column(
                   children: [
-                    Text(_titleController.text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                    Text('Question ${_currentIndex + 1}/${_flashcards.length}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    Text(_titleController.text,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18)),
+                    Text('Question ${_currentIndex + 1}/${_flashcards.length}',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 14)),
                   ],
                 ),
               ],
@@ -330,11 +376,13 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                 cardsCount: _flashcards.length,
                 onSwipe: _onSwipe,
                 padding: const EdgeInsets.symmetric(vertical: 30.0),
-                cardBuilder: (context, index, percentThresholdX, percentThresholdY) {
+                cardBuilder:
+                    (context, index, percentThresholdX, percentThresholdY) {
                   final card = _flashcards[index];
                   return FlipCard(
                     front: _buildCardSide(card.question, isFront: true),
-                    back: _buildCardSide(card.answer, isFront: false, cardIndex: index),
+                    back: _buildCardSide(card.answer,
+                        isFront: false, cardIndex: index),
                   );
                 },
               ),
@@ -354,44 +402,67 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 15, offset: const Offset(0,5))]),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 15,
+                offset: const Offset(0, 5))
+          ]),
       child: Column(
         children: [
           Expanded(
               child: Center(
                   child: Padding(
                       padding: const EdgeInsets.all(24.0),
-                      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, height: 1.4))))),
+                      child: Text(text,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              height: 1.4))))),
           if (!isFront)
             Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildFeedbackButton("Didn't Know", () => _handleFlashcardReview(cardIndex!, false), false),
-                    _buildFeedbackButton("Knew It", () => _handleFlashcardReview(cardIndex!, true), true),
+                    _buildFeedbackButton("Didn't Know",
+                        () => _handleFlashcardReview(cardIndex!, false), false),
+                    _buildFeedbackButton("Knew It",
+                        () => _handleFlashcardReview(cardIndex!, true), true),
                   ],
                 ))
           else
             const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Text("Tap to Flip", style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic))),
+                child: Text("Tap to Flip",
+                    style: TextStyle(
+                        color: Colors.white70, fontStyle: FontStyle.italic))),
         ],
       ),
     );
   }
 
-  Widget _buildFeedbackButton(String text, VoidCallback onPressed, bool knewIt) {
+  Widget _buildFeedbackButton(
+      String text, VoidCallback onPressed, bool knewIt) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: knewIt ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+        backgroundColor: knewIt
+            ? Colors.green.withOpacity(0.2)
+            : Colors.red.withOpacity(0.2),
         foregroundColor: knewIt ? Colors.greenAccent : Colors.redAccent,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: knewIt ? Colors.greenAccent : Colors.redAccent, width: 1.5)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+                color: knewIt ? Colors.greenAccent : Colors.redAccent,
+                width: 1.5)),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      child: Text(text,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
     );
   }
 
@@ -400,30 +471,54 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          const Text('Set Complete!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+          const Text('Set Complete!',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24)),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 100),
+                const Icon(Icons.check_circle_outline,
+                    color: Colors.greenAccent, size: 100),
                 const SizedBox(height: 24),
-                const Text("You've completed the set!", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                const Text("You've completed the set!",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 40),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _saveFlashcardSet,
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('Save Flashcards', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                    child: const Text('Save Flashcards',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 16),
-                 SizedBox(
+                SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: _reviewAgain, 
-                    style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey[700]!), padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    child: const Text('Review Again', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    onPressed: _reviewAgain,
+                    style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey[700]!),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                    child: const Text('Review Again',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -431,7 +526,11 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
                   width: double.infinity,
                   child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Finish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white70))),
+                      child: const Text('Finish',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white70))),
                 ),
               ],
             ),

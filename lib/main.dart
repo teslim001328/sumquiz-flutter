@@ -61,7 +61,8 @@ void main() async {
     await Hive.openBox<LocalFlashcardSet>('flashcard_sets');
     await Hive.openBox<SpacedRepetitionItem>('spaced_repetition');
   } catch (e, s) {
-    developer.log('Error during app initialization', name: 'my_app.main', error: e, stackTrace: s);
+    developer.log('Error during app initialization',
+        name: 'my_app.main', error: e, stackTrace: s);
     runApp(ErrorApp(error: e.toString()));
     return;
   }
@@ -126,7 +127,8 @@ class MyApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/edit-content',
-          builder: (context, state) => EditContentScreen(content: state.extra! as EditableContent),
+          builder: (context, state) =>
+              EditContentScreen(content: state.extra! as EditableContent),
         ),
       ],
     );

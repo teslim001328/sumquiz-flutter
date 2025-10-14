@@ -35,7 +35,8 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential result = await _auth.signInWithCredential(credential);
+      final UserCredential result =
+          await _auth.signInWithCredential(credential);
       final user = result.user;
 
       if (user != null) {
@@ -59,11 +60,12 @@ class AuthService {
       developer.log('Error signing in with Google', error: e, stackTrace: s);
       rethrow;
     } catch (e, s) {
-      developer.log('An unexpected error occurred during Google Sign-In', error: e, stackTrace: s);
+      developer.log('An unexpected error occurred during Google Sign-In',
+          error: e, stackTrace: s);
       rethrow;
     }
   }
-  
+
   Future<void> signInWithEmailAndPassword(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(
@@ -72,11 +74,12 @@ class AuthService {
       );
     } on FirebaseAuthException catch (e, s) {
       developer.log('Error signing in with email', error: e, stackTrace: s);
-      rethrow; 
+      rethrow;
     }
   }
 
-  Future<void> signUpWithEmailAndPassword(String email, String password, String fullName) async {
+  Future<void> signUpWithEmailAndPassword(
+      String email, String password, String fullName) async {
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -87,7 +90,7 @@ class AuthService {
       if (user != null) {
         UserModel newUser = UserModel(
           uid: user.uid,
-          name: fullName, 
+          name: fullName,
           email: user.email ?? '',
           subscriptionStatus: 'Free',
           dailyUsage: {},
@@ -98,7 +101,7 @@ class AuthService {
       }
     } on FirebaseAuthException catch (e, s) {
       developer.log('Error signing up with email', error: e, stackTrace: s);
-      rethrow; 
+      rethrow;
     }
   }
 
