@@ -10,6 +10,7 @@ class EditableContent {
   final String? content; // For summaries
   final List<QuizQuestion>? questions; // For quizzes
   final List<Flashcard>? flashcards; // For flashcards
+  final List<String>? tags;
   final Timestamp timestamp;
 
   EditableContent({
@@ -19,16 +20,18 @@ class EditableContent {
     this.content,
     this.questions,
     this.flashcards,
+    this.tags,
     required this.timestamp,
   });
 
   /// Create an EditableContent instance from a summary
-  factory EditableContent.fromSummary(String id, String content, Timestamp timestamp) {
+  factory EditableContent.fromSummary(String id, String title, String content, List<String> tags, Timestamp timestamp) {
     return EditableContent(
       id: id,
       type: 'summary',
-      title: content.length > 50 ? '${content.substring(0, 50)}...' : content,
+      title: title,
       content: content,
+      tags: tags,
       timestamp: timestamp,
     );
   }

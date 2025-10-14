@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
@@ -28,7 +29,9 @@ class SummaryScreenState extends State<SummaryScreen> {
   String? _pdfFileName;
   Uint8List? _pdfBytes;
   SummaryState _state = SummaryState.initial;
-  String _summary = '';
+  String _summaryContent = '';
+  String _summaryTitle = '';
+  List<String> _summaryTags = [];
   String _errorMessage = '';
   bool _isGeneratingQuiz = false;
 
@@ -42,7 +45,9 @@ class SummaryScreenState extends State<SummaryScreen> {
     _firestoreService = FirestoreService();
     _aiService = AIService();
     if (widget.summary != null) {
-      _summary = widget.summary!.content;
+      _summaryContent = widget.summary!.content;
+      _summaryTitle = widget.summary!.title;
+      _summaryTags = widget.summary!.tags;
       _state = SummaryState.success;
     }
   }
@@ -89,17 +94,20 @@ class SummaryScreenState extends State<SummaryScreen> {
     setState(() => _state = SummaryState.loading);
 
     try {
-      final summary = await _aiService.generateSummary(_textController.text, pdfBytes: _pdfBytes);
+      final summaryJsonString = await _aiService.generateSummary(_textController.text, pdfBytes: _pdfBytes);
+      final summaryData = json.decode(summaryJsonString) as Map<String, dynamic>;
 
-      if (summary.startsWith("Error:")) {
+      if (summaryData.containsKey('error')) {
         setState(() {
           _state = SummaryState.error;
-          _errorMessage = summary;
+          _errorMessage = summaryData['error'];
         });
       } else {
         await _firestoreService.incrementUsage(userModel.uid, 'summaries');
         setState(() {
-          _summary = summary;
+          _summaryTitle = summaryData['title'] ?? 'Summary';
+          _summaryContent = summaryData['content'] ?? '';
+          _summaryTags = List<String>.from(summaryData['tags'] ?? []);
           _state = SummaryState.success;
         });
       }
@@ -119,16 +127,18 @@ class SummaryScreenState extends State<SummaryScreen> {
   void _retry() {
     setState(() {
       _state = SummaryState.initial;
-      _summary = '';
+      _summaryContent = '';
+      _summaryTitle = '';
+      _summaryTags = [];
       _errorMessage = '';
     });
   }
 
   void _copySummary() {
-    Clipboard.setData(ClipboardData(text: _summary));
+    Clipboard.setData(ClipboardData(text: _summaryContent));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Summary copied to clipboard!'), backgroundColor: Colors.green),
+      const SnackBar(content: Text('Summary content copied to clipboard!'), backgroundColor: Colors.green),
     );
   }
 
@@ -136,7 +146,15 @@ class SummaryScreenState extends State<SummaryScreen> {
     final user = _auth.currentUser;
     if (user != null) {
       try {
-        await _firestoreService.addSummary(user.uid, Summary(id: '', userId: user.uid, content: _summary, timestamp: Timestamp.now()));
+        final summaryToSave = Summary(
+          id: '',
+          userId: user.uid,
+          title: _summaryTitle,
+          content: _summaryContent,
+          tags: _summaryTags,
+          timestamp: Timestamp.now(),
+        );
+        await _firestoreService.addSummary(user.uid, summaryToSave);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Summary saved to library!'), backgroundColor: Colors.green),
@@ -158,7 +176,7 @@ class SummaryScreenState extends State<SummaryScreen> {
     setState(() => _isGeneratingQuiz = true);
 
     try {
-      final summary = Summary(id: '', userId: user.uid, content: _summary, timestamp: Timestamp.now());
+      final summary = Summary(id: '', userId: user.uid, title: _summaryTitle, content: _summaryContent, tags: _summaryTags, timestamp: Timestamp.now());
       final quiz = await _aiService.generateQuizFromSummary(summary);
       if (mounted) {
         Navigator.push(context, MaterialPageRoute(builder: (context) => QuizScreen(quiz: quiz)));
@@ -180,11 +198,10 @@ class SummaryScreenState extends State<SummaryScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(widget.summary == null ? 'Generate Summary' : 'Summary', style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -292,11 +309,6 @@ class SummaryScreenState extends State<SummaryScreen> {
 
   Widget _buildSuccessState() {
     final bool isViewingSaved = widget.summary != null;
-    
-    // Simple logic to extract a title from the summary
-    List<String> summaryLines = _summary.split('\n');
-    String title = summaryLines.isNotEmpty && summaryLines[0].length < 60 ? summaryLines[0] : 'Your Summary';
-    String content = summaryLines.length > 1 ? summaryLines.sublist(1).join('\n').trim() : _summary;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -315,9 +327,19 @@ class SummaryScreenState extends State<SummaryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(_summaryTitle, style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              Text(content, style: const TextStyle(color: Colors.black87, fontSize: 16, height: 1.5)),
+              if (_summaryTags.isNotEmpty)
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 4.0,
+                  children: _summaryTags.map((tag) => Chip(
+                        label: Text(tag, style: const TextStyle(color: Colors.black)),
+                        backgroundColor: Colors.white.withOpacity(0.5),
+                      )).toList(),
+                ),
+              if (_summaryTags.isNotEmpty) const SizedBox(height: 16),
+              Text(_summaryContent, style: const TextStyle(color: Colors.black87, fontSize: 16, height: 1.5)),
             ],
           ),
         ),

@@ -1,11 +1,14 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 
 import '../../models/editable_content.dart';
 import '../../models/quiz_question.dart';
 import '../../models/flashcard.dart';
+import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/ai_service.dart'; 
 
 class EditContentScreen extends StatefulWidget {
   final EditableContent content;
@@ -18,85 +21,100 @@ class EditContentScreen extends StatefulWidget {
 
 class EditContentScreenState extends State<EditContentScreen> {
   late TextEditingController _titleController;
-  late TextEditingController _contentController;
   late List<QuizQuestion> _questions;
   late List<Flashcard> _flashcards;
+  late List<String> _tags;
   final FirestoreService _firestoreService = FirestoreService();
+  final AIService _aiService = AIService();
+  bool _isLoading = false;
+  
+  // For rich text editor
+  quill.QuillController? _quillController;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.content.title);
-    
+    _tags = List<String>.from(widget.content.tags ?? []);
+
     if (widget.content.type == 'summary') {
-      _contentController = TextEditingController(text: widget.content.content);
-    } else {
-      _contentController = TextEditingController();
-    }
-    
-    _questions = widget.content.questions?.toList() ?? [];
-    _flashcards = widget.content.flashcards?.toList() ?? [];
+      _initializeQuillController();
+    } 
+
+    _questions = widget.content.questions?.map((q) => QuizQuestion.from(q)).toList() ?? [];
+    _flashcards = widget.content.flashcards?.map((f) => Flashcard.from(f)).toList() ?? [];
+  }
+
+  void _initializeQuillController() {
+    final doc = (widget.content.content != null && widget.content.content.isNotEmpty)
+        ? quill.Document.fromJson(delta.toJson())
+        : quill.Document();
+    _quillController = quill.QuillController(document: doc, selection: const TextSelection.collapsed(offset: 0));
   }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _contentController.dispose();
+    _quillController?.dispose();
     super.dispose();
   }
 
   Future<void> _saveContent() async {
-    final user = Provider.of<User?>(context, listen: false);
-    if (user == null) return;
+    final userModel = Provider.of<UserModel?>(context, listen: false);
+    if (userModel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to save.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
 
     try {
       switch (widget.content.type) {
         case 'summary':
-          await _firestoreService.updateSummary(
-            user.uid,
-            widget.content.id,
-            _titleController.text,
-            _contentController.text,
-          );
+          final summaryContent = _quillController!.document.toDelta().toJson();
+          await _firestoreService.updateSummary(userModel.uid, widget.content.id, _titleController.text, summaryContent.toString(), _tags);
           break;
         case 'quiz':
-          await _firestoreService.updateQuiz(
-            user.uid,
-            widget.content.id,
-            _titleController.text,
-            _questions,
-          );
+          await _firestoreService.updateQuiz(userModel.uid, widget.content.id, _titleController.text, _questions);
           break;
         case 'flashcard':
-          await _firestoreService.updateFlashcardSet(
-            user.uid,
-            widget.content.id,
-            _titleController.text,
-            _flashcards,
-          );
+          await _firestoreService.updateFlashcardSet(userModel.uid, widget.content.id, _titleController.text, _flashcards);
           break;
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Content saved successfully!')),
+        const SnackBar(content: Text('Content saved successfully!'), backgroundColor: Colors.green),
       );
-      Navigator.pop(context, true); // Return true to indicate content was saved
+      Navigator.pop(context, true); 
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      String message = 'An error occurred.';
+      if (e.code == 'permission-denied') {
+        message = 'Permission denied. Please check your security rules.';
+      } else {
+        message = 'Error saving content: ${e.message}';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving content: $e')),
+        SnackBar(content: Text('An unexpected error occurred: $e'), backgroundColor: Colors.red),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _addQuestion() {
     setState(() {
-      _questions.add(QuizQuestion(
-        question: '',
-        options: List.generate(4, (index) => ''),
-        correctAnswer: '',
-      ));
+      _questions.add(QuizQuestion(question: '', options: List.generate(4, (index) => ''), correctAnswer: ''));
     });
   }
 
@@ -117,48 +135,160 @@ class EditContentScreenState extends State<EditContentScreen> {
       _flashcards.removeAt(index);
     });
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit ${widget.content.type}'),
+  
+  void _addTag() {
+    final TextEditingController tagController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add a Tag'),
+        content: TextField(controller: tagController, decoration: const InputDecoration(hintText: 'Enter tag')),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _saveContent,
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')), 
+          TextButton(
+            onPressed: () {
+              if (tagController.text.isNotEmpty) {
+                setState(() => _tags.add(tagController.text));
+                Navigator.of(context).pop();
+              }
+            }, 
+            child: const Text('Add')
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
+    );
+  }
+
+  void _removeTag(String tag) {
+    setState(() {
+      _tags.remove(tag);
+    });
+  }
+
+  Future<void> _runAiAssist() async {
+    if (_quillController == null || _isLoading) return;
+    
+    setState(() => _isLoading = true);
+    final currentText = _quillController!.document.toPlainText();
+    final suggestion = await _aiService.summarizeText(currentText);
+    
+    _quillController!.document.insert(_quillController!.document.length, '\n\nAI Suggestion:\n$suggestion');
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('AI suggestion added!'), backgroundColor: Colors.blue),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String typeName = widget.content.type.isNotEmpty ? widget.content.type[0].toUpperCase() + widget.content.type.substring(1) : 'Content';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF1C1C1E),
+      appBar: AppBar(
+        title: Text('Edit $typeName', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.only(right: 20.0),
+              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.save_alt_outlined, color: Colors.white),
+              onPressed: _saveContent,
+              tooltip: 'Save',
             ),
-            const SizedBox(height: 16),
-            if (widget.content.type == 'summary')
-              TextField(
-                controller: _contentController,
-                maxLines: 10,
-                decoration: const InputDecoration(
-                  labelText: 'Content',
-                  border: OutlineInputBorder(),
+        ],
+      ),
+      body: IgnorePointer(
+        ignoring: _isLoading,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (widget.content.type != 'flashcard')
+                TextFormField(
+                  controller: _titleController,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  decoration: _inputDecoration(label: 'Title', hint: 'Enter title'),
                 ),
-              )
-            else if (widget.content.type == 'quiz')
-              _buildQuizEditor()
-            else if (widget.content.type == 'flashcard')
-              _buildFlashcardEditor(),
-          ],
+              const SizedBox(height: 24),
+              if (widget.content.type == 'summary')
+                _buildSummaryEditor()
+              else if (widget.content.type == 'quiz')
+                _buildQuizEditor()
+              else if (widget.content.type == 'flashcard')
+                _buildFlashcardEditor(),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSummaryEditor() {
+    if (_quillController == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTagEditor(),
+        const SizedBox(height: 24),
+        quill.QuillToolbar.basic(controller: _quillController!),
+        const SizedBox(height: 16),
+        Container(
+          height: 300,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[700]!),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: quill.QuillEditor.basic(controller: _quillController!, readOnly: false),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+            label: const Text('AI Assist', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: _runAiAssist,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[850],
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTagEditor() {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children: [
+        ..._tags.map((tag) => Chip(
+              label: Text(tag, style: const TextStyle(color: Colors.white)),
+              backgroundColor: Colors.grey[800],
+              onDeleted: () => _removeTag(tag),
+              deleteIconColor: Colors.white,
+            )),
+        ActionChip(
+          label: const Text('Add Tag'),
+          onPressed: _addTag,
+          backgroundColor: Colors.blue,
+        ),
+      ],
     );
   }
 
@@ -166,84 +296,82 @@ class EditContentScreenState extends State<EditContentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Questions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        for (int i = 0; i < _questions.length; i++)
-          _buildQuestionEditor(i),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: _addQuestion,
-          icon: const Icon(Icons.add),
-          label: const Text('Add Question'),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _questions.length,
+          itemBuilder: (context, index) => _buildQuestionEditor(index),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: _addQuestion,
+            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+            label: const Text('Add New Question', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildQuestionEditor(int index) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              decoration: const InputDecoration(labelText: 'Question'),
-              controller: TextEditingController(text: _questions[index].question),
-              onChanged: (value) {
-                setState(() {
-                  _questions[index] = QuizQuestion(
-                    question: value,
-                    options: _questions[index].options,
-                    correctAnswer: _questions[index].correctAnswer,
-                  );
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            const Text('Options', style: TextStyle(fontWeight: FontWeight.bold)),
-            for (int j = 0; j < _questions[index].options.length; j++)
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            backgroundColor: Colors.grey[900],
+            collapsedBackgroundColor: Colors.grey[900],
+            iconColor: Colors.white,
+            collapsedIconColor: Colors.white,
+            title: Text('Question ${index + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            subtitle: Text(_questions[index].question.isEmpty ? 'New Question' : _questions[index].question, style: TextStyle(color: Colors.grey[400]), maxLines: 1, overflow: TextOverflow.ellipsis),
+            children: [
               Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: TextField(
-                  decoration: InputDecoration(labelText: 'Option ${j + 1}'),
-                  controller: TextEditingController(text: _questions[index].options[j]),
-                  onChanged: (value) {
-                    final newOptions = List<String>.from(_questions[index].options);
-                    newOptions[j] = value;
-                    setState(() {
-                      _questions[index] = QuizQuestion(
-                        question: _questions[index].question,
-                        options: newOptions,
-                        correctAnswer: _questions[index].correctAnswer,
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextFormField(
+                      initialValue: _questions[index].question,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _inputDecoration(label: 'Question'),
+                      onChanged: (value) => setState(() => _questions[index].question = value),
+                    ),
+                    const SizedBox(height: 12),
+                    ...List.generate(4, (optionIndex) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: TextFormField(
+                          initialValue: _questions[index].options.length > optionIndex ? _questions[index].options[optionIndex] : '',
+                          style: const TextStyle(color: Colors.white),
+                          decoration: _inputDecoration(label: 'Option ${optionIndex + 1}'),
+                          onChanged: (value) => setState(() => _questions[index].options[optionIndex] = value),
+                        ),
                       );
-                    });
-                  },
+                    }),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      initialValue: _questions[index].correctAnswer,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _inputDecoration(label: 'Correct Answer'),
+                      onChanged: (value) => setState(() => _questions[index].correctAnswer = value),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () => _removeQuestion(index),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Correct Answer'),
-              controller: TextEditingController(text: _questions[index].correctAnswer),
-              onChanged: (value) {
-                setState(() {
-                  _questions[index] = QuizQuestion(
-                    question: _questions[index].question,
-                    options: _questions[index].options,
-                    correctAnswer: value,
-                  );
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _removeQuestion(index),
-              ),
-            ),
-          ],
+              )
+            ],
+          ),
         ),
       ),
     );
@@ -253,62 +381,109 @@ class EditContentScreenState extends State<EditContentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Flashcards', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        for (int i = 0; i < _flashcards.length; i++)
-          _buildSingleFlashcardEditor(i),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: _addFlashcard,
-          icon: const Icon(Icons.add),
-          label: const Text('Add Flashcard'),
+        TextFormField(
+            controller: _titleController,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            decoration: _inputDecoration(label: 'Set Title', hint: 'e.g., AI Basics'),
+        ),
+        const SizedBox(height: 24),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _flashcards.length,
+          itemBuilder: (context, index) => _buildSingleFlashcardEditor(index),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: _addFlashcard,
+            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
+            label: const Text('Add Flashcard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildSingleFlashcardEditor(int index) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              decoration: const InputDecoration(labelText: 'Question'),
-              controller: TextEditingController(text: _flashcards[index].question),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFlashcardSideEditor(index, isFront: true),
+          const SizedBox(height: 16),
+          _buildFlashcardSideEditor(index, isFront: false),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFlashcardSideEditor(int index, {required bool isFront}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(16),
+        image: const DecorationImage(
+          image: NetworkImage('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Fflashcard_background_2.png?alt=media&token=38a1656f-44e2-4545-9774-5c9e99395254'),
+          fit: BoxFit.cover,
+          opacity: 0.2,
+        ),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+            child: TextFormField(
+              initialValue: isFront ? _flashcards[index].question : _flashcards[index].answer,
+              maxLines: 3,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+              decoration: const InputDecoration.collapsed(hintText: '...', hintStyle: TextStyle(color: Colors.white54)),
               onChanged: (value) {
                 setState(() {
-                  _flashcards[index] = Flashcard(
-                    question: value,
-                    answer: _flashcards[index].answer,
-                  );
+                  if (isFront) {
+                    _flashcards[index].question = value;
+                  } else {
+                    _flashcards[index].answer = value;
+                  }
                 });
               },
             ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Answer'),
-              controller: TextEditingController(text: _flashcards[index].answer),
-              onChanged: (value) {
-                setState(() {
-                  _flashcards[index] = Flashcard(
-                    question: _flashcards[index].question,
-                    answer: value,
-                  );
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
+          ),
+          Positioned(
+            top: 8, left: 16,
+            child: Text(isFront ? 'Front' : 'Back', style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.bold)),
+          ),
+          if (isFront)
+            Positioned(
+              top: 0, right: 0,
               child: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                 onPressed: () => _removeFlashcard(index),
+                tooltip: 'Remove Flashcard',
               ),
             ),
-          ],
-        ),
+        ],
+      ),
+    );
+  }
+
+
+  InputDecoration _inputDecoration({required String label, String? hint}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[600]),
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.grey[400]),
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      filled: true,
+      fillColor: Colors.grey[850],
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.grey[700]!, width: 1),
       ),
     );
   }

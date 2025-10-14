@@ -19,19 +19,29 @@ class LocalSummary extends HiveObject {
   @HiveField(4)
   late String userId;
 
+  @HiveField(5)
+  late String title;
+
+  @HiveField(6)
+  late List<String> tags;
+
   LocalSummary({
     required this.id,
+    required this.title,
     required this.content,
     required this.timestamp,
     this.isSynced = false,
     required this.userId,
+    this.tags = const [],
   });
 
   LocalSummary.empty() {
     id = '';
+    title = '';
     content = '';
     timestamp = DateTime.now();
     isSynced = false;
     userId = '';
+    tags = [];
   }
 }

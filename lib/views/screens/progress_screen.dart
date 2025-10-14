@@ -135,7 +135,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       ),
     );
   }
-  
+
   Widget _buildErrorState(String userId, Object error) {
     return Center(
       child: Padding(
@@ -224,7 +224,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$dueCount items', style: GoogleFonts.oswald(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                Text('Due for review today', style: GoogleFonts.roboto(color: Colors.white.withOpacity(230/255), fontSize: 16)),
+                Text('Due for review today', style: GoogleFonts.roboto(color: Colors.white.withAlpha(230), fontSize: 16)),
               ],
             ),
           ),
@@ -260,7 +260,14 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 final count = data.value;
                 return BarChartGroupData(
                   x: day,
-                  barRods: [BarChartRodData(toY: count.toDouble(), color: const Color(0xFF6EE7B7), width: 22, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)))],
+                  barRods: [
+                    BarChartRodData(
+                      toY: count.toDouble(),
+                      color: const Color(0xFF6EE7B7),
+                      width: 22,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                    ),
+                  ],
                 );
               }).toList(),
               titlesData: FlTitlesData(
@@ -292,7 +299,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
       ],
     );
   }
-  
+
   List<MapEntry<int, int>> _prepareWeeklyData(List<MapEntry<DateTime, int>> upcomingReviews) {
     final weeklyMap = { for (var i = 0; i < 7; i++) i: 0 };
     final today = DateTime.now();

@@ -1,7 +1,7 @@
 class QuizQuestion {
-  final String question;
-  final List<String> options;
-  final String correctAnswer;
+  String question;
+  List<String> options;
+  String correctAnswer;
 
   QuizQuestion({
     required this.question,
@@ -14,6 +14,14 @@ class QuizQuestion {
       question: map['question'] ?? '',
       options: List<String>.from(map['options'] ?? []),
       correctAnswer: map['correctAnswer'] ?? '',
+    );
+  }
+
+  factory QuizQuestion.from(QuizQuestion question) {
+    return QuizQuestion(
+      question: question.question,
+      options: List<String>.from(question.options),
+      correctAnswer: question.correctAnswer,
     );
   }
 

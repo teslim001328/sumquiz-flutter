@@ -1,6 +1,6 @@
 class Flashcard {
-  final String question;
-  final String answer;
+  String question;
+  String answer;
 
   Flashcard({
     required this.question,
@@ -11,6 +11,13 @@ class Flashcard {
     return Flashcard(
       question: map['question'] ?? '',
       answer: map['answer'] ?? '',
+    );
+  }
+
+  factory Flashcard.from(Flashcard flashcard) {
+    return Flashcard(
+      question: flashcard.question,
+      answer: flashcard.answer,
     );
   }
 

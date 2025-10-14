@@ -190,23 +190,18 @@ class _QuizScreenState extends State<QuizScreen> {
       });
   }
 
-  void _resetToCreation() {
-    setState(() {
-      _questions = [];
-      _isQuizFinished = false;
-      _currentQuestionIndex = 0;
-      _selectedAnswerIndex = null;
-      _score = 0;
-      _textController.clear();
-      _titleController.clear();
-    });
-  }
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: Stack(
         children: [
           _buildContent(),
@@ -235,18 +230,13 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            title: const Text('Create Quiz', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
+          const Text('Create Quiz', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
                   const Text('Quiz Title', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   TextField(
@@ -283,9 +273,15 @@ class _QuizScreenState extends State<QuizScreen> {
             padding: const EdgeInsets.symmetric(vertical: 24.0),
             child: SizedBox(
               width: double.infinity,
-              child: TextButton(
+              child: ElevatedButton(
                 onPressed: _generateQuiz,
-                child: const Text('Generate Quiz', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Generate Quiz', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ),
@@ -300,22 +296,10 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            automaticallyImplyLeading: false,
-            title: Column(
-              children: [
-                const Text('Quiz', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                Text('Question ${_currentQuestionIndex + 1}/${_questions.length}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
-              ],
-            ),
-            actions: [
-              IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: _resetToCreation,
-              )
+          Column(
+            children: [
+              const Text('Quiz', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+              Text('Question ${_currentQuestionIndex + 1}/${_questions.length}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
             ],
           ),
           const SizedBox(height: 16),
@@ -398,19 +382,8 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            automaticallyImplyLeading: false,
-            title: const Text('Quiz Results', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: _resetToCreation,
-              )
-            ],
-          ),
+          const Text('Quiz Results', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
+          const SizedBox(height: 24),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

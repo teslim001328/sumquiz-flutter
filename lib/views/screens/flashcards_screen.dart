@@ -1,11 +1,10 @@
 import 'dart:developer' as developer;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flip_card/flip_card.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../models/summary_model.dart';
 import '../../services/local_database_service.dart';
 import '../../services/spaced_repetition_service.dart';
 import '../../services/ai_service.dart';
@@ -77,15 +76,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final summary = Summary(
-        id: '', // Not needed for generation
-        userId: userModel.uid,
-        content: _textController.text,
-        timestamp: Timestamp.now(),
-      );
-
       developer.log('Generating flashcards for content...', name: 'flashcards.generation');
-      final cards = await _aiService.generateFlashcards(summary);
+      final cards = await _aiService.generateFlashcards(_textController.text);
 
       if (cards.isNotEmpty) {
         await _firestoreService.incrementUsage(userModel.uid, 'flashcards');
@@ -113,11 +105,66 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     } catch (e, s) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generating flashcards: $e')));
+        if (e.toString().contains('quota')) {
+          _showUpgradeDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generating flashcards: $e')));
+        }
         developer.log('Error generating flashcards', name: 'flashcards.generation', error: e, stackTrace: s);
       }
     }
   }
+
+  Future<void> _saveFlashcardSet() async {
+    final userModel = Provider.of<UserModel?>(context, listen: false);
+    if (userModel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to save a set.')),
+      );
+      return;
+    }
+
+    if (_flashcards.isEmpty || _titleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot save an empty set or a set without a title.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final set = FlashcardSet(
+        id: '', // Firestore will generate this
+        title: _titleController.text,
+        flashcards: _flashcards,
+        timestamp: Timestamp.now(),
+      );
+
+      await _firestoreService.addFlashcardSet(userModel.uid, set);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Flashcard set saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e, s) {
+      developer.log('Error saving flashcard set', name: 'flashcards.save', error: e, stackTrace: s);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving set: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
 
   void _showUpgradeDialog() {
     showModalBottomSheet(
@@ -151,20 +198,26 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     });
   }
 
-  void _resetToCreation() {
-    setState(() {
-      _flashcards = [];
-      _isReviewFinished = false;
-      _currentIndex = 0;
-      _textController.clear();
-      _titleController.clear();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          if (_flashcards.isNotEmpty && !_isReviewFinished)
+            IconButton(
+              icon: const Icon(Icons.save, color: Colors.white),
+              onPressed: _saveFlashcardSet,
+              tooltip: 'Save Set',
+            ),
+        ],
+      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -194,19 +247,13 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            title: const Text('Create', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
-          ),
+          const Text('Create Flashcards', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
                   const Text('Set Title', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   TextField(
@@ -243,9 +290,15 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 24.0),
             child: SizedBox(
               width: double.infinity,
-              child: TextButton(
+              child: ElevatedButton(
                 onPressed: _generateFlashcards,
-                child: const Text('Generate Flashcards', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Generate Flashcards', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ),
@@ -261,20 +314,14 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         child: Column(
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: _resetToCreation,
-                ),
-                const Spacer(),
                 Column(
                   children: [
-                    const Text('Review', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(_titleController.text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                     Text('Question ${_currentIndex + 1}/${_flashcards.length}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
                   ],
                 ),
-                const Spacer(),
-                const SizedBox(width: 48), // To balance the close button
               ],
             ),
             Expanded(
@@ -302,10 +349,12 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     return Container(
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          image: const DecorationImage(
-              image: NetworkImage('https://firebasestorage.googleapis.com/v0/b/genie-a0445.appspot.com/o/images%2Fflashcard_background.png?alt=media&token=954b52c0-8a21-492d-9467-f37648f81514'),
-              fit: BoxFit.cover),
-          boxShadow: [BoxShadow(color: Colors.black.withAlpha(77), blurRadius: 20, spreadRadius: 2)]),
+          gradient: LinearGradient(
+            colors: [Colors.grey[850]!, Colors.grey[900]!],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 15, offset: const Offset(0,5))]),
       child: Column(
         children: [
           Expanded(
@@ -336,10 +385,10 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: knewIt ? Colors.green.withAlpha(51) : Colors.red.withAlpha(51),
-        foregroundColor: knewIt ? Colors.green[800] : Colors.red[800],
+        backgroundColor: knewIt ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+        foregroundColor: knewIt ? Colors.greenAccent : Colors.redAccent,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: knewIt ? Colors.greenAccent : Colors.redAccent, width: 1.5)),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -351,47 +400,38 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: true,
-            automaticallyImplyLeading: false,
-            title: const Text('Flashcards', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop()),
-          ),
+          const Text('Set Complete!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24)),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  height: 200,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    image: const DecorationImage(
-                        image: NetworkImage('https://images.unsplash.com/photo-1516975080664-626423896246?w=800'),
-                        fit: BoxFit.cover),
-                  ),
-                  child: Container(
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: LinearGradient(
-                              colors: [Colors.black.withAlpha(204), Colors.transparent],
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.center)),
-                      alignment: Alignment.bottomCenter,
-                      padding: const EdgeInsets.all(24.0),
-                      child: const Text("You've completed the set!", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
-                ),
+                const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 100),
+                const SizedBox(height: 24),
+                const Text("You've completed the set!", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 40),
-                TextButton(onPressed: _reviewAgain, child: const Text('Review Again', style: TextStyle(color: Colors.white, fontSize: 16))),
-                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
+                    onPressed: _saveFlashcardSet,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('Save Flashcards', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                 SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _reviewAgain, 
+                    style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey[700]!), padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                    child: const Text('Review Again', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[850], padding: const EdgeInsets.symmetric(vertical: 18), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      child: const Text('Back to Library', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                      child: const Text('Finish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white70))),
                 ),
               ],
             ),

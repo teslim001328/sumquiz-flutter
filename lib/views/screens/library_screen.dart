@@ -340,7 +340,7 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
             Text('No $typeName yet', style: GoogleFonts.oswald(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
             const SizedBox(height: 12),
             Text(
-              'Tap the '' button to create your first set of study materials!',
+              'Tap the '+' button to create your first set of study materials!',
               textAlign: TextAlign.center,
               style: GoogleFonts.roboto(fontSize: 16, color: Colors.grey[400], height: 1.5),
             ),
@@ -456,7 +456,7 @@ class LibraryScreenState extends State<LibraryScreen> with SingleTickerProviderS
     switch (item.type) {
       case LibraryItemType.summary:
         final summary = content as Summary;
-        editableContent = EditableContent.fromSummary(summary.id, summary.content, summary.timestamp);
+        editableContent = EditableContent.fromSummary(summary.id, summary.title, summary.content, summary.tags, summary.timestamp);
         break;
       case LibraryItemType.quiz:
         final quiz = content as Quiz;

@@ -74,7 +74,17 @@ class LocalDatabaseService {
 
   // Summary operations
   Future<void> saveSummary(LocalSummary summary) async {
-    await _summariesBox.put(summary.id, summary);
+    final existingSummary = await getSummary(summary.id);
+    if (existingSummary != null) {
+      existingSummary.title = summary.title;
+      existingSummary.content = summary.content;
+      existingSummary.timestamp = summary.timestamp;
+      existingSummary.isSynced = summary.isSynced;
+      existingSummary.tags = summary.tags;
+      await existingSummary.save();
+    } else {
+      await _summariesBox.put(summary.id, summary);
+    }
   }
 
   Future<LocalSummary?> getSummary(String id) async {
