@@ -2,7 +2,7 @@
 
 ## Overview
 
-SumQuiz is a mobile application that uses AI to generate summaries, quizzes, and flashcards from user-provided text. It also includes a spaced repetition system to help users learn and retain information.
+SumQuiz is a cross-platform application (mobile, web, and desktop) that uses AI to generate summaries, quizzes, and flashcards from user-provided text. It includes a spaced repetition system to help users learn and retain information.
 
 ## Features
 
@@ -62,15 +62,25 @@ SumQuiz is a mobile application that uses AI to generate summaries, quizzes, and
     *   View the user's current subscription plan (Free or Pro).
     *   View a pricing table with the features of each plan.
 
-## Project Structure
+---
 
-*   `lib/`
-    *   `api/`: Contains the AI service for generating content.
-    *   `blocs/`: Contains the business logic for the application.
-    *   `components/`: Contains reusable UI components.
-    *   `models/`: Contains the data models for the application.
-    *   `providers/`: Contains the theme provider.
-    *   `router/`: Contains the application's router.
-    *   `services/`: Contains services for authentication, Firestore, local database, and subscriptions.
-    *   `views/`: Contains the application's screens.
-    *   `main.dart`: The main entry point for the application.
+## Current Task: Add Web & Desktop Support
+
+### Plan Overview
+
+1.  **Enable Web & Desktop Support:** Add the necessary configuration files and folders for web, Windows, macOS, and Linux to the project.
+2.  **Implement Responsive UI:** Refactor the main navigation to be responsive.
+    *   **Narrow Screens (Mobile):** Use the existing `BottomNavigationBar`.
+    *   **Wide Screens (Web/Desktop):** Switch to a `NavigationRail` for a better user experience on larger displays.
+3.  **Address Platform-Specifics:** Update Firebase App Check configuration for the web version.
+
+### Steps
+
+1.  **Enable Platforms:**
+    *   Run `flutter create --platforms=web,windows,macos,linux .` to add desktop and web support.
+2.  **Refactor Main Screen:**
+    *   Modify `lib/views/screens/main_screen.dart` to use a `LayoutBuilder`.
+    *   The `LayoutBuilder` will conditionally render either a `BottomNavigationBar` or a `NavigationRail` based on the screen width.
+3.  **Firebase Configuration:**
+    *   Instruct the user to add a reCAPTCHA v3 site key to `web/index.html` to ensure Firebase App Check works on the web.
+

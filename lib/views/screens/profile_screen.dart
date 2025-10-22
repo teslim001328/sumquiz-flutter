@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
@@ -25,10 +24,6 @@ class ProfileScreen extends StatelessWidget {
       );
     }
 
-    final quizzesTaken = quizViewModel.quizzes.length;
-    final averageScore = quizViewModel.averageScore;
-    final bestScore = quizViewModel.bestScore;
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -46,42 +41,99 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-            _buildProfileAvatar(user, theme),
-            const SizedBox(height: 16),
-            Text(user.name, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 4),
-            Text(user.email, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
-            _buildSubscriptionChip(user, theme),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth > 600) {
+            return _buildWideLayout(context, user, quizViewModel, authService, theme);
+          } else {
+            return _buildNarrowLayout(context, user, quizViewModel, authService, theme);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildNarrowLayout(BuildContext context, UserModel user, QuizViewModel quizViewModel, AuthService authService, ThemeData theme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 20),
+          _buildProfileAvatar(user, theme),
+          const SizedBox(height: 16),
+          Text(user.name, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          Text(user.email, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 12),
+          _buildSubscriptionChip(user, theme),
+          const SizedBox(height: 32),
+          _buildStatsSection(quizViewModel, theme),
+          const SizedBox(height: 32),
+          if (user.subscriptionStatus != 'Pro') ...[
+            _buildUpgradeCard(context, theme),
             const SizedBox(height: 32),
-            _buildStatsSection(quizzesTaken, averageScore, bestScore, theme),
-            const SizedBox(height: 32),
-            if (user.subscriptionStatus != 'Pro') ...[
-              _buildUpgradeCard(context, theme),
-              const SizedBox(height: 32),
-            ],
-            _buildLogOutButton(context, authService, theme),
-            const SizedBox(height: 20),
           ],
+          _buildLogOutButton(context, authService, theme),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWideLayout(BuildContext context, UserModel user, QuizViewModel quizViewModel, AuthService authService, ThemeData theme) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1000),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(40.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    _buildProfileAvatar(user, theme, radius: 60),
+                    const SizedBox(height: 20),
+                    Text(user.name, style: theme.textTheme.headlineMedium),
+                    const SizedBox(height: 8),
+                    Text(user.email, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 16),
+                    _buildSubscriptionChip(user, theme),
+                    const SizedBox(height: 30),
+                     _buildLogOutButton(context, authService, theme),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 40),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [
+                    _buildStatsSection(quizViewModel, theme),
+                    const SizedBox(height: 32),
+                    if (user.subscriptionStatus != 'Pro')
+                      _buildUpgradeCard(context, theme),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileAvatar(UserModel user, ThemeData theme) {
+
+  Widget _buildProfileAvatar(UserModel user, ThemeData theme, {double radius = 50}) {
     return CircleAvatar(
-      radius: 50,
+      radius: radius,
       backgroundColor: theme.colorScheme.secondaryContainer,
       child: Text(
         user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
         style: GoogleFonts.poppins(
-          fontSize: 40,
+          fontSize: radius * 0.8,
           fontWeight: FontWeight.bold,
           color: theme.colorScheme.onSecondaryContainer,
         ),
@@ -100,13 +152,17 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsSection(
-      int quizzesTaken, double averageScore, double bestScore, ThemeData theme) {
+  Widget _buildStatsSection(QuizViewModel quizViewModel, ThemeData theme) {
+    final quizzesTaken = quizViewModel.quizzes.length;
+    final averageScore = quizViewModel.averageScore;
+    final bestScore = quizViewModel.bestScore;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: theme.dividerColor)
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -157,6 +213,10 @@ class ProfileScreen extends StatelessWidget {
         child: InkWell(
           onTap: () => showModalBottomSheet(
             context: context,
+            isScrollControlled: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
             builder: (context) => const UpgradeModal(),
           ),
           borderRadius: BorderRadius.circular(15),
@@ -174,12 +234,13 @@ class ProfileScreen extends StatelessWidget {
                           style: theme.textTheme.headlineSmall?.copyWith(
                               color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('Unlock all features',
+                      Text('Unlock all features and get unlimited access',
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.onPrimary.withAlpha(200))),
                     ],
                   ),
                 ),
+                 const SizedBox(width: 20),
                 Icon(Icons.arrow_forward_ios, color: theme.colorScheme.onPrimary, size: 20),
               ],
             ),
@@ -201,7 +262,7 @@ class ProfileScreen extends StatelessWidget {
         },
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 15),
-          side: BorderSide(color: theme.colorScheme.error),
+          side: BorderSide(color: theme.colorScheme.error.withOpacity(0.5)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
