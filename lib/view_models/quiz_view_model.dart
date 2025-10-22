@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:myapp/models/local_quiz.dart';
-import 'package:myapp/services/local_database_service.dart';
-import 'package:myapp/services/auth_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:collection/collection.dart';
+import '../../models/local_quiz.dart';
+import '../../services/local_database_service.dart';
+import '../../services/auth_service.dart';
 
 class QuizViewModel with ChangeNotifier {
   final LocalDatabaseService _localDatabaseService;
@@ -15,34 +16,40 @@ class QuizViewModel with ChangeNotifier {
 
   List<LocalQuiz> get quizzes => _quizzes;
 
+  int get quizzesTaken {
+    // This will count the total number of attempts across all quizzes.
+    if (_quizzes.isEmpty) return 0;
+    return _quizzes.map((q) => q.scores.length).sum;
+  }
+
   double get averageScore {
     if (_quizzes.isEmpty) return 0.0;
-    final scoredQuizzes = _quizzes.where((q) => q.questions.any((qq) => qq.selectedOptionIndex != -1));
-    if (scoredQuizzes.isEmpty) return 0.0;
-    final totalScore = scoredQuizzes.fold<double>(0, (sum, quiz) => sum + _calculateScore(quiz));
-    return totalScore / scoredQuizzes.length;
+    
+    final allScores = _quizzes.expand((q) => q.scores).toList();
+    if (allScores.isEmpty) return 0.0;
+    
+    return allScores.average;
   }
 
   double get bestScore {
     if (_quizzes.isEmpty) return 0.0;
-    final scores = _quizzes.map((quiz) => _calculateScore(quiz));
-    if (scores.isEmpty) return 0.0;
-    return scores.reduce((a, b) => a > b ? a : b);
-  }
 
-  double _calculateScore(LocalQuiz quiz) {
-    final correctAnswers = quiz.questions.where((q) => q.options[q.correctOptionIndex] == q.options[q.selectedOptionIndex]).length;
-    return (correctAnswers / quiz.questions.length) * 100;
+    final allScores = _quizzes.expand((q) => q.scores).toList();
+    if (allScores.isEmpty) return 0.0;
+
+    return allScores.reduce((max, score) => score > max ? score : max);
   }
 
   void _loadQuizzes() async {
     final user = _authService.currentUser;
     if (user != null) {
+      await _localDatabaseService.init(); // Ensure DB is initialized
       _quizzes = await _localDatabaseService.getAllQuizzes(user.uid);
       notifyListeners();
     }
   }
 
+  // Call this method to refresh data from the database
   void refresh() {
     _loadQuizzes();
   }

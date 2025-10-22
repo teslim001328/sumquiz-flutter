@@ -10,6 +10,8 @@ import '../../models/editable_content.dart';
 import '../../models/summary_model.dart';
 import '../../models/quiz_model.dart';
 import '../../models/flashcard_set.dart';
+import '../../models/local_quiz.dart';
+import '../../models/local_quiz_question.dart';
 import '../screens/edit_content_screen.dart';
 import 'summary_screen.dart';
 import 'quiz_screen.dart';
@@ -45,6 +47,7 @@ class LibraryScreenState extends State<LibraryScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _searchController.addListener(_onSearchChanged);
+    _localDb.init();
     _loadOfflineModePreference();
   }
 
@@ -87,11 +90,6 @@ class LibraryScreenState extends State<LibraryScreen>
   Future<void> _loadOfflineModePreference() async {
     final isOffline = await _localDb.isOfflineModeEnabled();
     if (mounted) setState(() => _isOfflineMode = isOffline);
-  }
-
-  Future<void> _setOfflineMode(bool isEnabled) async {
-    await _localDb.setOfflineMode(isEnabled);
-    setState(() => _isOfflineMode = isEnabled);
   }
 
   @override
@@ -448,18 +446,39 @@ class LibraryScreenState extends State<LibraryScreen>
           content: Text('Navigation is disabled in offline mode.')));
       return;
     }
-    final content = await _firestoreService.getSpecificItem(userId, item);
-    if (content == null || !mounted) return;
-
+    
     Widget screen;
     switch (item.type) {
       case LibraryItemType.summary:
+        final content = await _firestoreService.getSpecificItem(userId, item);
+        if (content == null || !mounted) return;
         screen = SummaryScreen(summary: content as Summary);
         break;
       case LibraryItemType.quiz:
-        screen = QuizScreen(quiz: content as Quiz);
+        LocalQuiz? localQuiz = await _localDb.getQuiz(item.id);
+        if (localQuiz == null) {
+            final firestoreQuiz = await _firestoreService.getSpecificItem(userId, item) as Quiz?;
+            if (firestoreQuiz == null) return;
+            localQuiz = LocalQuiz(
+                id: firestoreQuiz.id,
+                userId: firestoreQuiz.userId,
+                title: firestoreQuiz.title,
+                questions: firestoreQuiz.questions.map((q) => 
+                    LocalQuizQuestion(
+                        question: q.question, 
+                        options: q.options, 
+                        correctAnswer: q.correctAnswer
+                    )).toList(), 
+                timestamp: firestoreQuiz.timestamp.toDate(),
+                scores: [],
+            );
+            await _localDb.saveQuiz(localQuiz);
+        }
+        screen = QuizScreen(quiz: localQuiz);
         break;
       case LibraryItemType.flashcards:
+        final content = await _firestoreService.getSpecificItem(userId, item);
+        if (content == null || !mounted) return;
         screen = FlashcardsScreen(flashcardSet: content as FlashcardSet);
         break;
     }
@@ -530,6 +549,7 @@ class LibraryScreenState extends State<LibraryScreen>
 
     if (confirmed) {
       await _firestoreService.deleteItem(userId, item);
+      await _localDb.deleteQuiz(item.id);
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Item deleted')));

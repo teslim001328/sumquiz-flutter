@@ -1,19 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../models/user_model.dart';
-import '../../services/firestore_service.dart';
+import '../../models/local_quiz.dart';
+import '../../models/local_quiz_question.dart';
 import '../../services/ai_service.dart';
+import '../../services/firestore_service.dart';
 import '../../services/local_database_service.dart';
-import '../../services/spaced_repetition_service.dart';
 import '../widgets/upgrade_modal.dart';
-import '../../models/quiz_question.dart';
-import '../../models/quiz_model.dart';
-import '../../models/summary_model.dart';
+import '../../models/summary_model.dart' as model_summary;
 
 class QuizScreen extends StatefulWidget {
-  final Quiz? quiz;
+  final LocalQuiz? quiz;
 
   const QuizScreen({super.key, this.quiz});
 
@@ -24,55 +25,79 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   final TextEditingController _textController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
-  final FirestoreService _firestore = FirestoreService();
   final AIService _aiService = AIService();
-  late SpacedRepetitionService _srsService;
+  final LocalDatabaseService _localDbService = LocalDatabaseService();
 
+  late List<LocalQuizQuestion> _questions;
   bool _isLoading = false;
   bool _isQuizFinished = false;
-  List<QuizQuestion> _questions = [];
   int _currentQuestionIndex = 0;
   int? _selectedAnswerIndex;
+  bool _answerWasSelected = false;
   int _score = 0;
+  String? _newQuizId; // Used to hold the ID for a newly generated quiz
 
   @override
   void initState() {
     super.initState();
-    _initializeServices();
+    _localDbService.init();
     if (widget.quiz != null) {
-      setState(() {
-        _questions = widget.quiz!.questions;
-        _titleController.text = widget.quiz!.title;
-      });
+      _questions = widget.quiz!.questions;
+      _titleController.text = widget.quiz!.title;
+    } else {
+      _questions = [];
     }
   }
-
-  Future<void> _initializeServices() async {
-    final dbService = LocalDatabaseService();
-    await dbService.init();
-    _srsService = SpacedRepetitionService(dbService.getSpacedRepetitionBox());
+  
+  Color _getTileColor(int index, ThemeData theme) {
+    if (!_answerWasSelected) {
+      return theme.cardColor;
+    }
+    final question = _questions[_currentQuestionIndex];
+    final bool isCorrect = question.options[index] == question.correctAnswer;
+    if (isCorrect) {
+      return Colors.green.shade100;
+    }
+    if (index == _selectedAnswerIndex && !isCorrect) {
+      return Colors.red.shade100;
+    }
+    return theme.cardColor;
   }
+  
+  Icon _getTileIcon(int index, ThemeData theme) {
+    if (!_answerWasSelected) {
+      return Icon(Icons.radio_button_unchecked, color: theme.disabledColor);
+    }
+    final question = _questions[_currentQuestionIndex];
+    final bool isCorrect = question.options[index] == question.correctAnswer;
+
+    if (isCorrect) {
+      return Icon(Icons.check_circle, color: Colors.green);
+    }
+    if (index == _selectedAnswerIndex && !isCorrect) {
+      return Icon(Icons.cancel, color: Colors.red);
+    }
+    return Icon(Icons.radio_button_unchecked, color: theme.disabledColor);
+  }
+
 
   Future<void> _generateQuiz() async {
     if (_titleController.text.isEmpty || _textController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Please fill in both the title and the text fields.')),
+        const SnackBar(content: Text('Please fill in both title and text.')),
       );
       return;
     }
 
     final userModel = Provider.of<UserModel?>(context, listen: false);
     if (userModel == null) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User data not available.')),
       );
       return;
     }
 
-    final canGenerate = await _firestore.canGenerate(userModel.uid, 'quizzes');
+    final canGenerate = await FirestoreService().canGenerate(userModel.uid, 'quizzes');
     if (!canGenerate) {
       if (mounted) _showUpgradeDialog();
       return;
@@ -80,15 +105,11 @@ class _QuizScreenState extends State<QuizScreen> {
 
     setState(() {
       _isLoading = true;
-      _isQuizFinished = false;
-      _questions = [];
-      _currentQuestionIndex = 0;
-      _selectedAnswerIndex = null;
-      _score = 0;
+      _resetQuizState();
     });
 
     try {
-      final summary = Summary(
+      final summary = model_summary.Summary(
         id: '',
         userId: userModel.uid,
         title: _titleController.text,
@@ -96,13 +117,16 @@ class _QuizScreenState extends State<QuizScreen> {
         timestamp: Timestamp.now(),
       );
       final quiz = await _aiService.generateQuizFromSummary(summary);
-      await _firestore.incrementUsage(userModel.uid, 'quizzes');
-      if (mounted) {
-        setState(() {
-          _questions = quiz.questions;
-          // Title is already set from the controller
-        });
-      }
+      await FirestoreService().incrementUsage(userModel.uid, 'quizzes');
+      
+      setState(() {
+        _questions = quiz.questions.map((q) => LocalQuizQuestion(
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        )).toList();
+        _newQuizId = const Uuid().v4(); // Generate ID for potential saving
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -128,81 +152,120 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<void> _saveQuiz() async {
     if (_questions.isEmpty || _titleController.text.isEmpty) return;
 
-    try {
-      final user = Provider.of<UserModel?>(context, listen: false);
-      if (user == null) throw Exception("User not found");
-      await _firestore.addQuiz(
-        user.uid,
-        Quiz(
-          id: '',
-          userId: user.uid,
-          title: _titleController.text,
-          questions: _questions,
-          timestamp: Timestamp.now(),
-        ),
-      );
-      if (!mounted) return;
+    final user = Provider.of<UserModel?>(context, listen: false);
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Quiz saved successfully!'),
-            backgroundColor: Colors.green),
+        const SnackBar(content: Text('Could not save quiz. User not logged in.')),
       );
-      Navigator.of(context).pop();
-    } catch (e) {
-      if (mounted) {
+      return;
+    }
+
+    // This handles saving a quiz that was just generated.
+    // Existing quizzes are updated when they finish, not here.
+    if (_newQuizId != null) {
+      final percentageScore = (_score / _questions.length) * 100.0;
+      final newQuiz = LocalQuiz(
+        id: _newQuizId!,
+        userId: user.uid,
+        title: _titleController.text,
+        questions: _questions,
+        timestamp: DateTime.now(),
+        scores: [percentageScore],
+      );
+
+      try {
+        await _localDbService.saveQuiz(newQuiz);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Error saving quiz: $e'),
-              backgroundColor: Colors.red),
+          const SnackBar(
+              content: Text('Quiz saved successfully!'),
+              backgroundColor: Colors.green),
         );
+        Navigator.of(context).pop();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Error saving quiz: $e'),
+                backgroundColor: Colors.red),
+          );
+        }
       }
+    } else if (widget.quiz != null) {
+        // If we are on the result screen of an existing quiz, we just pop
+        Navigator.of(context).pop();
     }
   }
 
+  void _onAnswerSelected(int index) {
+    if (_answerWasSelected) return; // Don't allow changing answer
+
+    final question = _questions[_currentQuestionIndex];
+    final isCorrect = question.options[index] == question.correctAnswer;
+
+    setState(() {
+      _selectedAnswerIndex = index;
+      _answerWasSelected = true;
+      if (isCorrect) {
+        _score++;
+      }
+    });
+  }
+
   void _handleNextQuestion() {
-    if (_selectedAnswerIndex == null) {
+    if (!_answerWasSelected) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an answer.')),
       );
       return;
     }
 
-    final isCorrect =
-        _questions[_currentQuestionIndex].options[_selectedAnswerIndex!] ==
-            _questions[_currentQuestionIndex].correctAnswer;
-
-    if (isCorrect) {
-      _score++;
-    }
-
-    final questionId = _questions[_currentQuestionIndex].hashCode.toString();
-    _srsService.updateReview(questionId, isCorrect);
-
     if (_currentQuestionIndex < _questions.length - 1) {
       setState(() {
         _currentQuestionIndex++;
         _selectedAnswerIndex = null;
+        _answerWasSelected = false;
       });
     } else {
-      setState(() {
-        _isQuizFinished = true;
-      });
+      // Quiz is finished
+      _onQuizFinished();
     }
   }
 
+  Future<void> _onQuizFinished() async {
+    // If this was an existing quiz, update its score list
+    if (widget.quiz != null) {
+      final percentageScore = (_score / _questions.length) * 100.0;
+      final existingQuiz = await _localDbService.getQuiz(widget.quiz!.id);
+      if (existingQuiz != null) {
+        existingQuiz.scores.add(percentageScore);
+        await _localDbService.saveQuiz(existingQuiz);
+      }
+    }
+    setState(() {
+      _isQuizFinished = true;
+    });
+  }
+
+  void _resetQuizState() {
+    _isQuizFinished = false;
+    _currentQuestionIndex = 0;
+    _selectedAnswerIndex = null;
+    _answerWasSelected = false;
+    _score = 0;
+  }
+  
   void _retryQuiz() {
     setState(() {
-      _isQuizFinished = false;
-      _currentQuestionIndex = 0;
-      _selectedAnswerIndex = null;
-      _score = 0;
+      _resetQuizState();
+      // If it's a generated quiz, we keep the questions.
+      // If it's an existing quiz, we also just reset the state.
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -242,16 +305,14 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          Text('Create Quiz',
-              style: theme.textTheme.headlineMedium),
+          Text('Create Quiz', style: theme.textTheme.headlineMedium),
           const SizedBox(height: 24),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Quiz Title',
-                      style: theme.textTheme.titleLarge),
+                  Text('Quiz Title', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _titleController,
@@ -267,8 +328,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text('Text',
-                      style: theme.textTheme.titleLarge),
+                  Text('Text', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _textController,
@@ -318,192 +378,128 @@ class _QuizScreenState extends State<QuizScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          Column(
-            children: [
-              Text('Quiz',
-                  style: theme.textTheme.headlineMedium),
-              Text('Question ${_currentQuestionIndex + 1}/${_questions.length}',
-                  style: theme.textTheme.bodyMedium),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              image: const DecorationImage(
-                image: NetworkImage(
-                    'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800'),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(24.0),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: [
-                    theme.scaffoldBackgroundColor.withAlpha(204),
-                    theme.scaffoldBackgroundColor.withAlpha(102)
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(question.question,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text('Choose the best answer',
-                      style: TextStyle(color: Colors.white70, fontSize: 16)),
-                ],
-              ),
-            ),
-          ),
+          Text(_titleController.text, style: theme.textTheme.headlineMedium),
+          Text('Question ${_currentQuestionIndex + 1}/${_questions.length}',
+              style: theme.textTheme.bodyMedium),
           const SizedBox(height: 24),
+          Text(
+            question.question,
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
           Expanded(
             child: ListView.builder(
               itemCount: question.options.length,
               itemBuilder: (context, index) {
-                return RadioListTile<int>(
-                  title: Text(question.options[index],
-                      style:
-                          TextStyle(color: theme.colorScheme.onSurface, fontSize: 16)),
-                  value: index,
-                  groupValue: _selectedAnswerIndex,
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedAnswerIndex = value;
-                    });
-                  },
-                  activeColor: theme.colorScheme.onSurface,
-                  controlAffinity: ListTileControlAffinity.trailing,
-                  tileColor: theme.cardColor,
+                final option = question.options[index];
+                return Card(
+                  elevation: _answerWasSelected ? 4 : 2,
+                  color: _getTileColor(index, theme),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: _selectedAnswerIndex == index 
+                             ? theme.colorScheme.primary 
+                             : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: ListTile(
+                    title: Text(option, style: theme.textTheme.bodyLarge),
+                    leading: _getTileIcon(index, theme),
+                    onTap: () => _onAnswerSelected(index),
+                  ),
                 );
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _handleNextQuestion,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Next Question',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _answerWasSelected ? _handleNextQuestion : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                disabledBackgroundColor: theme.disabledColor,
+              ),
+              child: Text(
+                _currentQuestionIndex < _questions.length - 1 ? 'Next Question' : 'Finish Quiz',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
-          )
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
   Widget _buildResultScreen(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        children: [
-          Text('Quiz Results',
-              style: theme.textTheme.headlineMedium),
-          const SizedBox(height: 24),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('$_score/${_questions.length}',
-                              style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text('Your Score',
-                              style: TextStyle(
-                                  color: theme.textTheme.bodySmall?.color, fontSize: 18)),
-                        ],
-                      ),
-                      const Spacer(),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          'https://images.unsplash.com/photo-1516975080664-626423896246?w=400',
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    ],
-                  ),
+    final percentage = (_score / _questions.length) * 100;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Quiz Results', style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 24),
+            Text(
+              '${percentage.toStringAsFixed(0)}%',
+              style: theme.textTheme.displayLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text('Your Score: $_score out of ${_questions.length}', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 48),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveQuiz,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                const SizedBox(height: 40),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _saveQuiz,
-                    style: OutlinedButton.styleFrom(
+                child: Text(
+                  // A new quiz can be saved. An existing one is already updated.
+                  _newQuizId != null ? 'Save Quiz' : 'Done',
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _retryQuiz,
+                 style: OutlinedButton.styleFrom(
                       side: BorderSide(color: theme.colorScheme.onSurface),
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: Text('Save Quiz',
-                        style: TextStyle(
+                child: Text(
+                  'Retry Quiz',
+                   style: TextStyle(
                             color: theme.colorScheme.onSurface,
                             fontSize: 16,
-                            fontWeight: FontWeight.bold)),
-                  ),
+                            fontWeight: FontWeight.bold)
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _retryQuiz,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Retry',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

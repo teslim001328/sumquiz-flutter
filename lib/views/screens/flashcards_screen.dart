@@ -387,13 +387,13 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [theme.cardColor, theme.cardColor.withOpacity(0.8)],
+            colors: [theme.cardColor, theme.cardColor.withAlpha(204)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withAlpha(128),
                 blurRadius: 15,
                 offset: const Offset(0, 5))
           ]),
@@ -434,8 +434,8 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: knewIt
-            ? Colors.green.withOpacity(0.2)
-            : Colors.red.withOpacity(0.2),
+            ? Colors.green.withAlpha(51)
+            : Colors.red.withAlpha(51),
         foregroundColor: knewIt ? Colors.greenAccent : Colors.redAccent,
         elevation: 0,
         shape: RoundedRectangleBorder(

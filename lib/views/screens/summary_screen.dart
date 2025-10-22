@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/summary_model.dart';
 import '../../models/user_model.dart';
@@ -13,6 +14,8 @@ import '../../services/firestore_service.dart';
 import '../../services/ai_service.dart';
 import '../widgets/upgrade_modal.dart';
 import 'quiz_screen.dart';
+import '../../models/local_quiz.dart';
+import '../../models/local_quiz_question.dart';
 
 enum SummaryState { initial, loading, error, success }
 
@@ -211,10 +214,24 @@ class SummaryScreenState extends State<SummaryScreen> {
         timestamp: Timestamp.now(),
       );
       final quiz = await _aiService.generateQuizFromSummary(summary);
+      
+      final localQuiz = LocalQuiz(
+        id: const Uuid().v4(),
+        userId: user.uid,
+        title: quiz.title,
+        questions: quiz.questions.map((q) => LocalQuizQuestion(
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        )).toList(),
+        timestamp: DateTime.now(),
+        scores: [],
+      );
+
       if (mounted) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => QuizScreen(quiz: quiz)),
+          MaterialPageRoute(builder: (context) => QuizScreen(quiz: localQuiz)),
         );
       }
     } catch (e, s) {

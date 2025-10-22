@@ -23,13 +23,14 @@ class LocalQuizAdapter extends TypeAdapter<LocalQuiz> {
       timestamp: fields[3] as DateTime,
       isSynced: fields[4] as bool,
       userId: fields[5] as String,
+      scores: (fields[6] as List?)?.cast<double>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, LocalQuiz obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class LocalQuizAdapter extends TypeAdapter<LocalQuiz> {
       ..writeByte(4)
       ..write(obj.isSynced)
       ..writeByte(5)
-      ..write(obj.userId);
+      ..write(obj.userId)
+      ..writeByte(6)
+      ..write(obj.scores);
   }
 
   @override

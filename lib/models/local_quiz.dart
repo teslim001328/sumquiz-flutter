@@ -23,6 +23,9 @@ class LocalQuiz extends HiveObject {
   @HiveField(5)
   late String userId;
 
+  @HiveField(6)
+  late List<double> scores;
+
   LocalQuiz({
     required this.id,
     required this.title,
@@ -30,7 +33,8 @@ class LocalQuiz extends HiveObject {
     required this.timestamp,
     this.isSynced = false,
     required this.userId,
-  });
+    List<double>? scores,
+  }) : scores = scores ?? [];
 
   LocalQuiz.empty() {
     id = '';
@@ -39,5 +43,6 @@ class LocalQuiz extends HiveObject {
     timestamp = DateTime.now();
     isSynced = false;
     userId = '';
+    scores = [];
   }
 }
