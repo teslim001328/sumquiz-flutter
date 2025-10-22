@@ -201,91 +201,84 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: theme.iconTheme.color),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: Stack(
         children: [
-          _buildContent(),
+          _buildContent(theme),
           if (_isLoading)
             Container(
-              color: Colors.black.withAlpha(178),
-              child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white)),
+              color: theme.scaffoldBackgroundColor.withAlpha(178),
+              child: Center(
+                  child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(ThemeData theme) {
     if (_isQuizFinished) {
-      return _buildResultScreen();
+      return _buildResultScreen(theme);
     } else if (_questions.isNotEmpty) {
-      return _buildQuizInterface();
+      return _buildQuizInterface(theme);
     } else {
-      return _buildCreationForm();
+      return _buildCreationForm(theme);
     }
   }
 
-  Widget _buildCreationForm() {
+  Widget _buildCreationForm(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          const Text('Create Quiz',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold)),
+          Text('Create Quiz',
+              style: theme.textTheme.headlineMedium),
           const SizedBox(height: 24),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Quiz Title',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500)),
+                  Text('Quiz Title',
+                      style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _titleController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Enter quiz title',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      hintStyle: TextStyle(color: theme.textTheme.bodySmall?.color),
                       filled: true,
-                      fillColor: Colors.grey[900],
+                      fillColor: theme.cardColor,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Text',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500)),
+                  Text('Text',
+                      style: theme.textTheme.titleLarge),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _textController,
                     maxLines: 8,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: theme.colorScheme.onSurface),
                     decoration: InputDecoration(
                       hintText: 'Enter text to generate quiz',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      hintStyle: TextStyle(color: theme.textTheme.bodySmall?.color),
                       filled: true,
-                      fillColor: Colors.grey[900],
+                      fillColor: theme.cardColor,
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none),
@@ -302,8 +295,8 @@ class _QuizScreenState extends State<QuizScreen> {
               child: ElevatedButton(
                 onPressed: _generateQuiz,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -319,7 +312,7 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  Widget _buildQuizInterface() {
+  Widget _buildQuizInterface(ThemeData theme) {
     final question = _questions[_currentQuestionIndex];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -327,13 +320,10 @@ class _QuizScreenState extends State<QuizScreen> {
         children: [
           Column(
             children: [
-              const Text('Quiz',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 24)),
+              Text('Quiz',
+                  style: theme.textTheme.headlineMedium),
               Text('Question ${_currentQuestionIndex + 1}/${_questions.length}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                  style: theme.textTheme.bodyMedium),
             ],
           ),
           const SizedBox(height: 16),
@@ -354,8 +344,8 @@ class _QuizScreenState extends State<QuizScreen> {
                 borderRadius: BorderRadius.circular(20),
                 gradient: LinearGradient(
                   colors: [
-                    Colors.black.withAlpha(204),
-                    Colors.black.withAlpha(102)
+                    theme.scaffoldBackgroundColor.withAlpha(204),
+                    theme.scaffoldBackgroundColor.withAlpha(102)
                   ],
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
@@ -385,7 +375,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 return RadioListTile<int>(
                   title: Text(question.options[index],
                       style:
-                          const TextStyle(color: Colors.white, fontSize: 16)),
+                          TextStyle(color: theme.colorScheme.onSurface, fontSize: 16)),
                   value: index,
                   groupValue: _selectedAnswerIndex,
                   onChanged: (value) {
@@ -393,9 +383,9 @@ class _QuizScreenState extends State<QuizScreen> {
                       _selectedAnswerIndex = value;
                     });
                   },
-                  activeColor: Colors.white,
+                  activeColor: theme.colorScheme.onSurface,
                   controlAffinity: ListTileControlAffinity.trailing,
-                  tileColor: Colors.grey[900],
+                  tileColor: theme.cardColor,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                   contentPadding:
@@ -411,8 +401,8 @@ class _QuizScreenState extends State<QuizScreen> {
               child: ElevatedButton(
                 onPressed: _handleNextQuestion,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -428,16 +418,13 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
-  Widget _buildResultScreen() {
+  Widget _buildResultScreen(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
         children: [
-          const Text('Quiz Results',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24)),
+          Text('Quiz Results',
+              style: theme.textTheme.headlineMedium),
           const SizedBox(height: 24),
           Expanded(
             child: Column(
@@ -446,7 +433,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.grey[900],
+                    color: theme.cardColor,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -455,14 +442,14 @@ class _QuizScreenState extends State<QuizScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('$_score/${_questions.length}',
-                              style: const TextStyle(
-                                  color: Colors.white,
+                              style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
                                   fontSize: 48,
                                   fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          const Text('Your Score',
+                          Text('Your Score',
                               style: TextStyle(
-                                  color: Colors.white70, fontSize: 18)),
+                                  color: theme.textTheme.bodySmall?.color, fontSize: 18)),
                         ],
                       ),
                       const Spacer(),
@@ -484,14 +471,14 @@ class _QuizScreenState extends State<QuizScreen> {
                   child: OutlinedButton(
                     onPressed: _saveQuiz,
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Colors.grey[700]!),
+                      side: BorderSide(color: theme.colorScheme.onSurface),
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Save Quiz',
+                    child: Text('Save Quiz',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: theme.colorScheme.onSurface,
                             fontSize: 16,
                             fontWeight: FontWeight.bold)),
                   ),
@@ -502,8 +489,8 @@ class _QuizScreenState extends State<QuizScreen> {
                   child: ElevatedButton(
                     onPressed: _retryQuiz,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),

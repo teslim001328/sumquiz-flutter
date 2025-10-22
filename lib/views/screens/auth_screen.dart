@@ -75,45 +75,42 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(32.0),
             child: _authMode == AuthMode.Login
-                ? _buildLoginForm()
-                : _buildSignUpForm(),
+                ? _buildLoginForm(theme)
+                : _buildSignUpForm(theme),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLoginForm() {
+  Widget _buildLoginForm(ThemeData theme) {
     return Form(
       key: _formKey,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'SUMQUIZ',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 32,
+            style: theme.textTheme.headlineLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Instant Clarity. Lightning Fast.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-            ),
+            style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 48),
           _buildTextField(
+            theme: theme,
             controller: _emailController,
             labelText: 'Email or Username',
             validator: (value) {
@@ -125,6 +122,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 16),
           _buildTextField(
+            theme: theme,
             controller: _passwordController,
             labelText: 'Password',
             obscureText: true,
@@ -140,32 +138,34 @@ class _AuthScreenState extends State<AuthScreen> {
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: () {},
-              child: const Text(
+              child: Text(
                 'Forgot Password?',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
               ),
             ),
           ),
           const SizedBox(height: 32),
-          _buildAuthButton('Login', _submit),
+          _buildAuthButton('Login', _submit, theme),
           const SizedBox(height: 24),
           _buildSwitchAuthModeButton(
             'Don\'t have an account? ',
             'Sign Up',
             _switchAuthMode,
+            theme,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSignUpForm() {
+  Widget _buildSignUpForm(ThemeData theme) {
     return Form(
       key: _formKey,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _buildTextField(
+            theme: theme,
             controller: _fullNameController,
             labelText: 'Full Name',
             validator: (value) {
@@ -177,6 +177,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 16),
           _buildTextField(
+            theme: theme,
             controller: _emailController,
             labelText: 'Email Address',
             keyboardType: TextInputType.emailAddress,
@@ -189,6 +190,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 16),
           _buildTextField(
+            theme: theme,
             controller: _passwordController,
             labelText: 'Password',
             obscureText: true,
@@ -200,14 +202,15 @@ class _AuthScreenState extends State<AuthScreen> {
             },
           ),
           const SizedBox(height: 32),
-          _buildAuthButton('Sign Up', _submit),
+          _buildAuthButton('Sign Up', _submit, theme),
           const SizedBox(height: 24),
-          _buildGoogleButton(),
+          _buildGoogleButton(theme),
           const SizedBox(height: 24),
           _buildSwitchAuthModeButton(
             'Already have an account? ',
             'Login',
             _switchAuthMode,
+            theme,
           ),
         ],
       ),
@@ -215,6 +218,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildTextField({
+    required ThemeData theme,
     required TextEditingController controller,
     required String labelText,
     bool obscureText = false,
@@ -226,8 +230,7 @@ class _AuthScreenState extends State<AuthScreen> {
       children: [
         Text(
           labelText,
-          style: const TextStyle(
-            color: Colors.white,
+          style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -236,15 +239,15 @@ class _AuthScreenState extends State<AuthScreen> {
           controller: controller,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.grey[900],
+            fillColor: theme.inputDecorationTheme.fillColor,
             hintText: 'Enter your $labelText',
-            hintStyle: TextStyle(color: Colors.grey[600]),
+            hintStyle: theme.inputDecorationTheme.hintStyle,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
             ),
           ),
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: theme.colorScheme.onSurface),
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
@@ -253,13 +256,13 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildAuthButton(String text, VoidCallback onPressed) {
+  Widget _buildAuthButton(String text, VoidCallback onPressed, ThemeData theme) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -277,22 +280,22 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildGoogleButton() {
+  Widget _buildGoogleButton(ThemeData theme) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.white54),
+          side: BorderSide(color: theme.colorScheme.onSurface.withOpacity(0.54)),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
         ),
         onPressed: _googleSignIn,
-        child: const Text(
+        child: Text(
           'Continue with Google',
           style: TextStyle(
-            color: Colors.white,
+            color: theme.colorScheme.onSurface,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -302,18 +305,18 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildSwitchAuthModeButton(
-      String text, String buttonText, VoidCallback onPressed) {
+      String text, String buttonText, VoidCallback onPressed, ThemeData theme) {
     return TextButton(
       onPressed: onPressed,
       child: RichText(
         text: TextSpan(
           text: text,
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
           children: [
             TextSpan(
               text: buttonText,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
               ),
             ),

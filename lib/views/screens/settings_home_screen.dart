@@ -5,8 +5,8 @@ import 'data_storage_screen.dart';
 import 'subscription_screen.dart';
 import 'privacy_about_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+class SettingsHomeScreen extends StatelessWidget {
+  const SettingsHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

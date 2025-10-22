@@ -208,8 +208,9 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
   }
 
   Widget _buildFlashcardReview() {
-    if (_currentIndex >= _dueFlashcards.length)
+    if (_currentIndex >= _dueFlashcards.length) {
       return _buildCompletionOrMessageView();
+    }
 
     final flashcard = _dueFlashcards[_currentIndex];
 

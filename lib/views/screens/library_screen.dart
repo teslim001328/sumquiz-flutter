@@ -14,6 +14,7 @@ import '../screens/edit_content_screen.dart';
 import 'summary_screen.dart';
 import 'quiz_screen.dart';
 import 'flashcards_screen.dart';
+import 'settings_screen.dart';
 import '../widgets/add_content_modal.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -96,60 +97,58 @@ class LibraryScreenState extends State<LibraryScreen>
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _buildAppBar(),
-      body: user == null ? _buildLoggedOutView() : _buildLibraryContent(user),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: _buildAppBar(context, theme),
+      body: user == null ? _buildLoggedOutView(theme) : _buildLibraryContent(user, theme),
       floatingActionButton: user != null && !_isOfflineMode
           ? FloatingActionButton(
               onPressed: () => showModalBottomSheet(
                   context: context,
                   builder: (context) => const AddContentModal(),
                   isScrollControlled: true),
-              backgroundColor: Colors.grey[800],
+              backgroundColor: theme.cardColor,
+              foregroundColor: theme.iconTheme.color,
               child: const Icon(Icons.add),
             )
           : null,
     );
   }
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(BuildContext context, ThemeData theme) {
     return AppBar(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       elevation: 0,
       title: Text('Library',
-          style: GoogleFonts.oswald(fontWeight: FontWeight.bold, fontSize: 24)),
+          style: theme.textTheme.headlineMedium),
       centerTitle: true,
       actions: [
         IconButton(
           icon: const Icon(Icons.settings_outlined),
-          onPressed: () => _showSettingsDialog(),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen())),
         ),
       ],
     );
   }
 
-  Widget _buildLoggedOutView() {
+  Widget _buildLoggedOutView(ThemeData theme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 80, color: Colors.grey),
+            Icon(Icons.cloud_off_outlined, size: 80, color: theme.iconTheme.color),
             const SizedBox(height: 24),
             Text('Please Log In',
-                style: GoogleFonts.oswald(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
               'Log in to access your synchronized library across all your devices.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
-                  fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -157,27 +156,23 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Widget _buildOfflineState() {
+  Widget _buildOfflineState(ThemeData theme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.signal_wifi_off_outlined,
-                size: 80, color: Colors.grey),
+            Icon(Icons.signal_wifi_off_outlined,
+                size: 80, color: theme.iconTheme.color),
             const SizedBox(height: 24),
             Text('Offline Mode',
-                style: GoogleFonts.oswald(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
               'You are currently in offline mode. Only locally stored content is available. Turn off offline mode in settings to sync with the cloud.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
-                  fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -185,21 +180,21 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Widget _buildLibraryContent(User user) {
+  Widget _buildLibraryContent(User user, ThemeData theme) {
     if (_isOfflineMode) {
-      return _buildOfflineState();
+      return _buildOfflineState(theme);
     }
     return Column(
       children: [
-        _buildSearchAndTabs(),
+        _buildSearchAndTabs(theme),
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
-              _buildCombinedList(user.uid),
-              _buildLibraryList(user.uid, 'summaries', _summariesStream),
-              _buildLibraryList(user.uid, 'quizzes', _quizzesStream),
-              _buildLibraryList(user.uid, 'flashcards', _flashcardsStream),
+              _buildCombinedList(user.uid, theme),
+              _buildLibraryList(user.uid, 'summaries', _summariesStream, theme),
+              _buildLibraryList(user.uid, 'quizzes', _quizzesStream, theme),
+              _buildLibraryList(user.uid, 'flashcards', _flashcardsStream, theme),
             ],
           ),
         ),
@@ -207,20 +202,20 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Widget _buildSearchAndTabs() {
+  Widget _buildSearchAndTabs(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Column(
         children: [
           TextField(
             controller: _searchController,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: theme.colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: 'Search Library...',
-              hintStyle: TextStyle(color: Colors.grey[500]),
-              prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
+              hintStyle: TextStyle(color: theme.textTheme.bodySmall?.color),
+              prefixIcon: Icon(Icons.search, color: theme.textTheme.bodySmall?.color),
               filled: true,
-              fillColor: Colors.grey[900],
+              fillColor: theme.cardColor,
               contentPadding: const EdgeInsets.symmetric(vertical: 15.0),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
@@ -228,13 +223,13 @@ class LibraryScreenState extends State<LibraryScreen>
             ),
           ),
           const SizedBox(height: 16),
-          _buildTabBar(),
+          _buildTabBar(theme),
         ],
       ),
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(ThemeData theme) {
     return TabBar(
       controller: _tabController,
       isScrollable: true,
@@ -245,15 +240,15 @@ class LibraryScreenState extends State<LibraryScreen>
         Tab(text: 'Flashcards'),
       ],
       indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(30), color: Colors.grey[800]),
+          borderRadius: BorderRadius.circular(30), color: theme.colorScheme.secondaryContainer),
       labelStyle: GoogleFonts.roboto(fontWeight: FontWeight.bold),
-      unselectedLabelColor: Colors.grey[400],
-      labelColor: Colors.white,
+      unselectedLabelColor: theme.textTheme.bodySmall?.color,
+      labelColor: theme.colorScheme.onSecondaryContainer,
       dividerColor: Colors.transparent,
     );
   }
 
-  Widget _buildCombinedList(String userId) {
+  Widget _buildCombinedList(String userId, ThemeData theme) {
     return StreamBuilder<Map<String, List<LibraryItem>>>(
       stream: _allItemsStream,
       builder: (context, snapshot) {
@@ -264,18 +259,18 @@ class LibraryScreenState extends State<LibraryScreen>
         if (!snapshot.hasData ||
             snapshot.data == null ||
             snapshot.data!.values.every((list) => list.isEmpty)) {
-          return _buildNoContentState('all');
+          return _buildNoContentState('all', theme);
         }
 
         final allItems = snapshot.data!.values.expand((list) => list).toList();
         allItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        return _buildContentList(allItems, userId);
+        return _buildContentList(allItems, userId, theme);
       },
     );
   }
 
   Widget _buildLibraryList(
-      String userId, String type, Stream<List<LibraryItem>>? stream) {
+      String userId, String type, Stream<List<LibraryItem>>? stream, ThemeData theme) {
     return StreamBuilder<List<LibraryItem>>(
       stream: stream,
       builder: (context, snapshot) {
@@ -286,27 +281,27 @@ class LibraryScreenState extends State<LibraryScreen>
         if (!snapshot.hasData ||
             snapshot.data == null ||
             snapshot.data!.isEmpty) {
-          return _buildNoContentState(type);
+          return _buildNoContentState(type, theme);
         }
 
         final items = snapshot.data!;
-        return _buildContentList(items, userId);
+        return _buildContentList(items, userId, theme);
       },
     );
   }
 
-  Widget _buildContentList(List<LibraryItem> items, String userId) {
+  Widget _buildContentList(List<LibraryItem> items, String userId, ThemeData theme) {
     final filteredItems = items.where((item) {
       return item.title.toLowerCase().contains(_searchQuery);
     }).toList();
 
     if (filteredItems.isEmpty) {
       if (items.isNotEmpty && _searchQuery.isNotEmpty) {
-        return _buildNoSearchResultsState();
+        return _buildNoSearchResultsState(theme);
       }
       return _buildNoContentState(_tabController.index == 0
           ? 'all'
-          : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1]);
+          : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1], theme);
     }
 
     return ListView.builder(
@@ -314,14 +309,14 @@ class LibraryScreenState extends State<LibraryScreen>
       itemCount: filteredItems.length,
       itemBuilder: (context, index) {
         final item = filteredItems[index];
-        return _buildLibraryCard(item, userId);
+        return _buildLibraryCard(item, userId, theme);
       },
     );
   }
 
-  Widget _buildLibraryCard(LibraryItem item, String userId) {
+  Widget _buildLibraryCard(LibraryItem item, String userId, ThemeData theme) {
     return Card(
-      color: Colors.grey[900],
+      color: theme.cardColor,
       margin: const EdgeInsets.only(bottom: 12.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
@@ -338,22 +333,19 @@ class LibraryScreenState extends State<LibraryScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.title,
-                        style: GoogleFonts.roboto(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16),
+                        style: theme.textTheme.titleMedium,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Text(item.type.toString().split('.').last,
                         style:
-                            TextStyle(color: Colors.grey[400], fontSize: 12)),
+                            TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12)),
                   ],
                 ),
               ),
               IconButton(
-                  icon: const Icon(Icons.more_horiz, color: Colors.white),
-                  onPressed: () => _showItemMenu(userId, item)),
+                  icon: Icon(Icons.more_horiz, color: theme.iconTheme.color),
+                  onPressed: () => _showItemMenu(userId, item, theme)),
             ],
           ),
         ),
@@ -372,7 +364,7 @@ class LibraryScreenState extends State<LibraryScreen>
     }
   }
 
-  Widget _buildNoContentState(String type) {
+  Widget _buildNoContentState(String type, ThemeData theme) {
     final typeName = type == 'all' ? 'content' : type.replaceAll('s', '');
     return Center(
       child: Padding(
@@ -380,20 +372,15 @@ class LibraryScreenState extends State<LibraryScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.school_outlined, size: 100, color: Colors.grey),
+            Icon(Icons.school_outlined, size: 100, color: theme.iconTheme.color),
             const SizedBox(height: 24),
             Text('No $typeName yet',
-                style: GoogleFonts.oswald(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
-              'Tap the ' +
-                  ' button to create your first set of study materials!',
+              'Tap the ' '+' ' button to create your first set of study materials!',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
-                  fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -401,27 +388,23 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Widget _buildNoSearchResultsState() {
+  Widget _buildNoSearchResultsState(ThemeData theme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.search_off_outlined,
-                size: 100, color: Colors.grey),
+            Icon(Icons.search_off_outlined,
+                size: 100, color: theme.iconTheme.color),
             const SizedBox(height: 24),
             Text('No Results Found',
-                style: GoogleFonts.oswald(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
               'Your search for "$_searchQuery" did not match any content. Try a different search term.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
-                  fontSize: 16, color: Colors.grey[400], height: 1.5),
+              style: theme.textTheme.bodyMedium,
             ),
           ],
         ),
@@ -429,52 +412,17 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  void _showSettingsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[900],
-          title:
-              Text('Settings', style: GoogleFonts.oswald(color: Colors.white)),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return SwitchListTile(
-                title: const Text('Offline Mode',
-                    style: TextStyle(color: Colors.white)),
-                value: _isOfflineMode,
-                onChanged: (bool value) {
-                  _setOfflineMode(value);
-                  setState(() {});
-                  Navigator.of(context).pop();
-                },
-                secondary: const Icon(Icons.signal_wifi_off_outlined,
-                    color: Colors.white),
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child:
-                    const Text('Close', style: TextStyle(color: Colors.white)))
-          ],
-        );
-      },
-    );
-  }
-
-  void _showItemMenu(String userId, LibraryItem item) {
+  void _showItemMenu(String userId, LibraryItem item, ThemeData theme) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.grey[900],
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Wrap(
         children: [
           ListTile(
-            leading: const Icon(Icons.edit_outlined, color: Colors.white),
-            title: const Text('Edit', style: TextStyle(color: Colors.white)),
+            leading: Icon(Icons.edit_outlined, color: theme.iconTheme.color),
+            title: Text('Edit', style: theme.textTheme.bodyMedium),
             onTap: () {
               Navigator.pop(context);
               _editContent(userId, item);
@@ -555,6 +503,7 @@ class LibraryScreenState extends State<LibraryScreen>
   }
 
   Future<void> _deleteContent(String userId, LibraryItem item) async {
+    final theme = Theme.of(context);
     if (_isOfflineMode) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Deletion is disabled in offline mode.')));
@@ -563,12 +512,13 @@ class LibraryScreenState extends State<LibraryScreen>
     final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Delete Content'),
-            content: const Text('Are you sure you want to delete this item?'),
+            backgroundColor: theme.cardColor,
+            title: Text('Delete Content', style: theme.textTheme.headlineSmall),
+            content: Text('Are you sure you want to delete this item?', style: theme.textTheme.bodyMedium),
             actions: [
               TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel')),
+                  child: Text('Cancel', style: TextStyle(color: theme.colorScheme.onSurface))),
               TextButton(
                   onPressed: () => Navigator.of(context).pop(true),
                   child: const Text('Delete',

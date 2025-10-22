@@ -2,7 +2,6 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
@@ -86,20 +85,20 @@ class _ProgressScreenState extends State<ProgressScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
+    final theme = Theme.of(context);
 
     if (user == null) {
-      return const Center(
+      return Center(
           child: Text('Please log in to view your progress.',
-              style: TextStyle(color: Colors.white)));
+              style: theme.textTheme.bodyMedium));
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Progress',
-            style: GoogleFonts.oswald(
-                color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.black,
+            style: theme.textTheme.headlineMedium),
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
       ),
@@ -107,19 +106,19 @@ class _ProgressScreenState extends State<ProgressScreen> {
         future: _statsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
+            return Center(
                 child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.onSurface)));
           }
           if (snapshot.hasError) {
             developer.log('FutureBuilder error',
                 name: 'ProgressScreen',
                 error: snapshot.error,
                 stackTrace: snapshot.stackTrace);
-            return _buildErrorState(user.uid, snapshot.error!);
+            return _buildErrorState(user.uid, snapshot.error!, theme);
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return _buildEmptyState(user.uid);
+            return _buildEmptyState(user.uid, theme);
           }
 
           final stats = snapshot.data!;
@@ -135,13 +134,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTopMetrics(stats),
+                  _buildTopMetrics(stats, theme),
                   const SizedBox(height: 24),
-                  _buildReviewBanner(stats['dueForReviewCount'] as int? ?? 0),
+                  _buildReviewBanner(stats['dueForReviewCount'] as int? ?? 0, theme),
                   const SizedBox(height: 24),
                   _buildUpcomingReviews(stats['upcomingReviews']
                           as List<MapEntry<DateTime, int>>? ??
-                      []),
+                      [], theme),
                 ],
               ),
             ),
@@ -151,7 +150,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  Widget _buildErrorState(String userId, Object error) {
+  Widget _buildErrorState(String userId, Object error, ThemeData theme) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -160,80 +159,79 @@ class _ProgressScreenState extends State<ProgressScreen> {
           children: [
             const Icon(Icons.error_outline, color: Colors.red, size: 60),
             const SizedBox(height: 16),
-            const Text('Something went wrong.',
-                style: TextStyle(color: Colors.white, fontSize: 18)),
+            Text('Something went wrong.',
+                style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text('Could not load your progress. Please try again later.',
-                style: TextStyle(color: Colors.grey[400]),
+                style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center),
             const SizedBox(height: 16),
             Text('Details: ${error.toString()}',
-                style: TextStyle(color: Colors.grey[600]),
+                style: theme.textTheme.bodySmall,
                 textAlign: TextAlign.center),
             const SizedBox(height: 20),
             ElevatedButton(
                 onPressed: () =>
                     setState(() => _statsFuture = _loadStats(userId)),
-                child: const Text('Retry'))
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                ),
+                child: const Text('Retry'),
+            )
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTopMetrics(Map<String, dynamic> stats) {
+  Widget _buildTopMetrics(Map<String, dynamic> stats, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Top Metrics',
-            style: GoogleFonts.oswald(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white)),
+            style: theme.textTheme.headlineMedium),
         const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
                 child: _buildMetricChip(
-                    'Summaries', (stats['summariesCount'] ?? 0).toString())),
+                    theme, 'Summaries', (stats['summariesCount'] ?? 0).toString())),
             const SizedBox(width: 10),
             Expanded(
                 child: _buildMetricChip(
-                    'Quizzes', (stats['quizzesCount'] ?? 0).toString())),
+                    theme, 'Quizzes', (stats['quizzesCount'] ?? 0).toString())),
           ],
         ),
         const SizedBox(height: 10),
         _buildMetricChip(
-            'Flashcards', (stats['flashcardsCount'] ?? 0).toString(),
+            theme, 'Flashcards', (stats['flashcardsCount'] ?? 0).toString(),
             isFullWidth: true),
       ],
     );
   }
 
-  Widget _buildMetricChip(String label, String value,
+  Widget _buildMetricChip(ThemeData theme, String label, String value,
       {bool isFullWidth = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           Text(value,
-              style: GoogleFonts.oswald(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold)),
+              style: theme.textTheme.headlineSmall),
           const SizedBox(height: 4),
           Text(label,
-              style: GoogleFonts.roboto(color: Colors.grey[400], fontSize: 14)),
+              style: theme.textTheme.bodyMedium),
         ],
       ),
     );
   }
 
-  Widget _buildReviewBanner(int dueCount) {
+  Widget _buildReviewBanner(int dueCount, ThemeData theme) {
     return Container(
       height: 150,
       width: double.infinity,
@@ -249,7 +247,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           gradient: LinearGradient(
-            colors: [const Color.fromRGBO(0, 0, 0, 0.7), Colors.transparent],
+            colors: [theme.scaffoldBackgroundColor.withOpacity(0.7), Colors.transparent],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
           ),
@@ -263,13 +261,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$dueCount items',
-                    style: GoogleFonts.oswald(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold)),
+                    style: theme.textTheme.headlineMedium),
                 Text('Due for review today',
-                    style: GoogleFonts.roboto(
-                        color: Colors.white.withAlpha(230), fontSize: 16)),
+                    style: theme.textTheme.bodyMedium),
               ],
             ),
           ),
@@ -278,7 +272,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
-  Widget _buildUpcomingReviews(List<MapEntry<DateTime, int>> upcomingReviews) {
+  Widget _buildUpcomingReviews(List<MapEntry<DateTime, int>> upcomingReviews, ThemeData theme) {
     final weeklyData = _prepareWeeklyData(upcomingReviews);
     final totalUpcoming =
         upcomingReviews.fold<int>(0, (sum, item) => sum + item.value);
@@ -287,22 +281,16 @@ class _ProgressScreenState extends State<ProgressScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Upcoming Reviews',
-            style: GoogleFonts.oswald(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white)),
+            style: theme.textTheme.headlineMedium),
         const SizedBox(height: 16),
         Row(
           children: [
             Text(totalUpcoming.toString(),
-                style: GoogleFonts.oswald(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                style: theme.textTheme.headlineLarge),
             const SizedBox(width: 8),
             Text('in the next 7 days',
                 style:
-                    GoogleFonts.roboto(color: Colors.grey[400], fontSize: 16)),
+                    theme.textTheme.bodyMedium),
           ],
         ),
         const SizedBox(height: 20),
@@ -319,7 +307,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   barRods: [
                     BarChartRodData(
                       toY: count.toDouble(),
-                      color: const Color(0xFF6EE7B7),
+                      color: theme.colorScheme.secondary,
                       width: 22,
                       borderRadius:
                           const BorderRadius.vertical(top: Radius.circular(6)),
@@ -342,7 +330,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                       final day = now.add(Duration(days: value.toInt()));
                       return Text(DateFormat.E().format(day),
                           style:
-                              TextStyle(color: Colors.grey[500], fontSize: 12));
+                              theme.textTheme.bodySmall);
                     },
                     reservedSize: 30,
                   ),
@@ -352,7 +340,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey[800]!, width: 1),
+                  bottom: BorderSide(color: theme.textTheme.bodySmall!.color!, width: 1),
                 ),
               ),
             ),
@@ -382,25 +370,22 @@ class _ProgressScreenState extends State<ProgressScreen> {
     return weeklyMap.entries.toList();
   }
 
-  Widget _buildEmptyState(String userId) {
+  Widget _buildEmptyState(String userId, ThemeData theme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.leaderboard_outlined, size: 80, color: Colors.grey),
+          Icon(Icons.leaderboard_outlined, size: 80, color: theme.iconTheme.color),
           const SizedBox(height: 16),
           Text('No Progress Data Yet',
-              style: GoogleFonts.oswald(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white)),
+              style: theme.textTheme.headlineMedium),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40.0),
             child: Text(
               'Complete some quizzes or flashcard reviews to see your progress here.',
               style:
-                  GoogleFonts.openSans(fontSize: 16, color: Colors.grey[600]),
+                  theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ),
@@ -408,7 +393,12 @@ class _ProgressScreenState extends State<ProgressScreen> {
           ElevatedButton(
               onPressed: () =>
                   setState(() => _statsFuture = _loadStats(userId)),
-              child: const Text('Refresh'))
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+              ),
+              child: const Text('Refresh'),
+          )
         ],
       ),
     );

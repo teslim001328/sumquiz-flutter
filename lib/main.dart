@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,15 +14,6 @@ import 'services/firestore_service.dart';
 import 'services/local_database_service.dart';
 import 'services/upgrade_service.dart';
 
-import 'views/screens/auth_screen.dart';
-import 'views/screens/main_screen.dart';
-import 'views/screens/settings_screen.dart';
-import 'views/screens/spaced_repetition_screen.dart';
-import 'views/screens/summary_screen.dart';
-import 'views/screens/quiz_screen.dart';
-import 'views/screens/flashcards_screen.dart';
-import 'views/screens/edit_content_screen.dart';
-
 import 'models/user_model.dart';
 import 'models/local_summary.dart';
 import 'models/local_quiz.dart';
@@ -31,9 +21,9 @@ import 'models/local_quiz_question.dart';
 import 'models/local_flashcard.dart';
 import 'models/local_flashcard_set.dart';
 import 'models/spaced_repetition.dart';
-import 'models/editable_content.dart';
-import 'views/theme.dart';
 import 'providers/theme_provider.dart';
+import 'router/app_router.dart';
+import 'view_models/quiz_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +34,7 @@ void main() async {
     );
 
     await FirebaseAppCheck.instance.activate(
+      webProvider: ReCaptchaV3Provider('your-recaptcha-site-key'),
       androidProvider: AndroidProvider.playIntegrity,
       appleProvider: AppleProvider.appAttest,
     );
@@ -68,71 +59,19 @@ void main() async {
   }
 
   final authService = AuthService(FirebaseAuth.instance);
+  final appRouter = createAppRouter(authService);
 
-  runApp(MyApp(authService: authService));
+  runApp(MyApp(authService: authService, router: appRouter));
 }
 
 class MyApp extends StatelessWidget {
   final AuthService authService;
+  final GoRouter router;
 
-  const MyApp({super.key, required this.authService});
+  const MyApp({super.key, required this.authService, required this.router});
 
   @override
   Widget build(BuildContext context) {
-    final GoRouter router = GoRouter(
-      initialLocation: '/',
-      refreshListenable: GoRouterRefreshStream(authService.authStateChanges),
-      redirect: (context, state) {
-        final user = authService.currentUser;
-        final loggingIn = state.matchedLocation == '/auth';
-
-        if (user == null) {
-          return loggingIn ? null : '/auth';
-        }
-
-        if (loggingIn) {
-          return '/';
-        }
-
-        return null;
-      },
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const MainScreen(),
-        ),
-        GoRoute(
-          path: '/auth',
-          builder: (context, state) => AuthScreen(authService: authService),
-        ),
-        GoRoute(
-          path: '/settings',
-          builder: (context, state) => const SettingsScreen(),
-        ),
-        GoRoute(
-          path: '/spaced-repetition',
-          builder: (context, state) => const SpacedRepetitionScreen(),
-        ),
-        GoRoute(
-          path: '/summary',
-          builder: (context, state) => const SummaryScreen(),
-        ),
-        GoRoute(
-          path: '/quiz',
-          builder: (context, state) => const QuizScreen(),
-        ),
-        GoRoute(
-          path: '/flashcards',
-          builder: (context, state) => const FlashcardsScreen(),
-        ),
-        GoRoute(
-          path: '/edit-content',
-          builder: (context, state) =>
-              EditContentScreen(content: state.extra! as EditableContent),
-        ),
-      ],
-    );
-
     return MultiProvider(
       providers: [
         Provider<AuthService>.value(value: authService),
@@ -157,13 +96,19 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<ThemeProvider>(
           create: (_) => ThemeProvider(),
         ),
+        ChangeNotifierProvider<QuizViewModel>(
+          create: (context) => QuizViewModel(
+            Provider.of<LocalDatabaseService>(context, listen: false),
+            Provider.of<AuthService>(context, listen: false),
+          ),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp.router(
             title: 'SumQuiz',
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
+            theme: themeProvider.getTheme(),
+            darkTheme: themeProvider.getTheme(),
             themeMode: themeProvider.themeMode,
             routerConfig: router,
             debugShowCheckedModeBanner: false,
@@ -171,21 +116,6 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
-  }
-}
-
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
-  }
-
-  late final StreamSubscription<dynamic> _subscription;
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
   }
 }
 

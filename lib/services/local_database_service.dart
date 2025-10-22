@@ -39,21 +39,28 @@ class LocalDatabaseService {
     try {
       await Hive.initFlutter();
 
-      if (!Hive.isAdapterRegistered(0))
+      if (!Hive.isAdapterRegistered(0)) {
         Hive.registerAdapter(LocalSummaryAdapter());
-      if (!Hive.isAdapterRegistered(1))
+      }
+      if (!Hive.isAdapterRegistered(1)) {
         Hive.registerAdapter(LocalQuizAdapter());
-      if (!Hive.isAdapterRegistered(2))
+      }
+      if (!Hive.isAdapterRegistered(2)) {
         Hive.registerAdapter(LocalQuizQuestionAdapter());
-      if (!Hive.isAdapterRegistered(3))
+      }
+      if (!Hive.isAdapterRegistered(3)) {
         Hive.registerAdapter(LocalFlashcardAdapter());
-      if (!Hive.isAdapterRegistered(4))
+      }
+      if (!Hive.isAdapterRegistered(4)) {
         Hive.registerAdapter(LocalFlashcardSetAdapter());
+      }
       if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(FolderAdapter());
-      if (!Hive.isAdapterRegistered(6))
+      if (!Hive.isAdapterRegistered(6)) {
         Hive.registerAdapter(ContentFolderAdapter());
-      if (!Hive.isAdapterRegistered(8))
+      }
+      if (!Hive.isAdapterRegistered(8)) {
         Hive.registerAdapter(SpacedRepetitionItemAdapter());
+      }
 
       _summariesBox = await Hive.openBox<LocalSummary>(_summariesBoxName);
       _quizzesBox = await Hive.openBox<LocalQuiz>(_quizzesBoxName);
@@ -76,15 +83,18 @@ class LocalDatabaseService {
   Box<SpacedRepetitionItem> getSpacedRepetitionBox() => _spacedRepetitionBox;
 
   Future<bool> isOfflineModeEnabled() async {
+    await init();
     return _settingsBox.get('offlineMode', defaultValue: false);
   }
 
   Future<void> setOfflineMode(bool isEnabled) async {
+    await init();
     await _settingsBox.put('offlineMode', isEnabled);
   }
 
   // Summary operations
   Future<void> saveSummary(LocalSummary summary) async {
+    await init();
     final existingSummary = await getSummary(summary.id);
     if (existingSummary != null) {
       existingSummary.title = summary.title;
@@ -99,20 +109,24 @@ class LocalDatabaseService {
   }
 
   Future<LocalSummary?> getSummary(String id) async {
+    await init();
     return _summariesBox.get(id);
   }
 
   Future<List<LocalSummary>> getAllSummaries(String userId) async {
+    await init();
     return _summariesBox.values
         .where((summary) => summary.userId == userId)
         .toList();
   }
 
   Future<void> deleteSummary(String id) async {
+    await init();
     await _summariesBox.delete(id);
   }
 
   Future<void> updateSummarySyncStatus(String id, bool isSynced) async {
+    await init();
     final summary = await getSummary(id);
     if (summary != null) {
       summary.isSynced = isSynced;
@@ -122,22 +136,27 @@ class LocalDatabaseService {
 
   // Quiz operations
   Future<void> saveQuiz(LocalQuiz quiz) async {
+    await init();
     await _quizzesBox.put(quiz.id, quiz);
   }
 
   Future<LocalQuiz?> getQuiz(String id) async {
+    await init();
     return _quizzesBox.get(id);
   }
 
   Future<List<LocalQuiz>> getAllQuizzes(String userId) async {
+    await init();
     return _quizzesBox.values.where((quiz) => quiz.userId == userId).toList();
   }
 
   Future<void> deleteQuiz(String id) async {
+    await init();
     await _quizzesBox.delete(id);
   }
 
   Future<void> updateQuizSyncStatus(String id, bool isSynced) async {
+    await init();
     final quiz = await getQuiz(id);
     if (quiz != null) {
       quiz.isSynced = isSynced;
@@ -147,24 +166,29 @@ class LocalDatabaseService {
 
   // Flashcard set operations
   Future<void> saveFlashcardSet(LocalFlashcardSet flashcardSet) async {
+    await init();
     await _flashcardSetsBox.put(flashcardSet.id, flashcardSet);
   }
 
   Future<LocalFlashcardSet?> getFlashcardSet(String id) async {
+    await init();
     return _flashcardSetsBox.get(id);
   }
 
   Future<List<LocalFlashcardSet>> getAllFlashcardSets(String userId) async {
+    await init();
     return _flashcardSetsBox.values
         .where((set) => set.userId == userId)
         .toList();
   }
 
   Future<void> deleteFlashcardSet(String id) async {
+    await init();
     await _flashcardSetsBox.delete(id);
   }
 
   Future<void> updateFlashcardSetSyncStatus(String id, bool isSynced) async {
+    await init();
     final flashcardSet = await getFlashcardSet(id);
     if (flashcardSet != null) {
       flashcardSet.isSynced = isSynced;
@@ -174,24 +198,29 @@ class LocalDatabaseService {
 
   // Folder operations
   Future<void> saveFolder(Folder folder) async {
+    await init();
     await _foldersBox.put(folder.id, folder);
   }
 
   Future<Folder?> getFolder(String id) async {
+    await init();
     return _foldersBox.get(id);
   }
 
   Future<List<Folder>> getAllFolders(String userId) async {
+    await init();
     return _foldersBox.values
         .where((folder) => folder.userId == userId)
         .toList();
   }
 
   Future<void> deleteFolder(String id) async {
+    await init();
     await _foldersBox.delete(id);
   }
 
   Future<void> updateFolder(String id, String newName) async {
+    await init();
     final folder = await getFolder(id);
     if (folder != null) {
       folder.name = newName;
@@ -203,6 +232,7 @@ class LocalDatabaseService {
   // Content-Folder relationship operations
   Future<void> assignContentToFolder(String contentId, String folderId,
       String contentType, String userId) async {
+    await init();
     final contentFolder = ContentFolder(
       contentId: contentId,
       folderId: folderId,
@@ -214,12 +244,14 @@ class LocalDatabaseService {
   }
 
   Future<List<ContentFolder>> getContentFolders(String contentId) async {
+    await init();
     return _contentFoldersBox.values
         .where((cf) => cf.contentId == contentId)
         .toList();
   }
 
   Future<List<ContentFolder>> getFolderContents(String folderId) async {
+    await init();
     return _contentFoldersBox.values
         .where((cf) => cf.folderId == folderId)
         .toList();
@@ -227,6 +259,7 @@ class LocalDatabaseService {
 
   Future<void> removeContentFromFolder(
       String contentId, String folderId) async {
+    await init();
     final contentFolders = _contentFoldersBox.values
         .where((cf) => cf.contentId == contentId && cf.folderId == folderId)
         .toList();
@@ -237,14 +270,17 @@ class LocalDatabaseService {
   }
 
   Future<void> clearAllData() async {
+    await init();
     await _summariesBox.clear();
     await _quizzesBox.clear();
     await _flashcardSetsBox.clear();
     await _foldersBox.clear();
     await _contentFoldersBox.clear();
+    await _settingsBox.clear();
   }
 
   Future<int> getUnsyncedCount(String userId) async {
+    await init();
     final unsyncedSummaries = _summariesBox.values
         .where((s) => s.userId == userId && !s.isSynced)
         .length;
@@ -262,15 +298,18 @@ class LocalDatabaseService {
 
   // Spaced repetition operations
   Future<void> saveSpacedRepetitionItem(SpacedRepetitionItem item) async {
+    await init();
     await _spacedRepetitionBox.put(item.id, item);
   }
 
   Future<SpacedRepetitionItem?> getSpacedRepetitionItem(String id) async {
+    await init();
     return _spacedRepetitionBox.get(id);
   }
 
   Future<List<SpacedRepetitionItem>> getAllSpacedRepetitionItems(
       String userId) async {
+    await init();
     return _spacedRepetitionBox.values
         .where((item) => item.userId == userId)
         .toList();
@@ -278,6 +317,7 @@ class LocalDatabaseService {
 
   Future<List<SpacedRepetitionItem>> getDueSpacedRepetitionItems(
       String userId, DateTime now) async {
+    await init();
     return _spacedRepetitionBox.values
         .where((item) =>
             item.userId == userId && item.nextReviewDate.isBefore(now))
@@ -285,6 +325,7 @@ class LocalDatabaseService {
   }
 
   Future<void> deleteSpacedRepetitionItem(String id) async {
+    await init();
     await _spacedRepetitionBox.delete(id);
   }
 }

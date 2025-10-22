@@ -1,67 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AiToolsScreen extends StatelessWidget {
   const AiToolsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            backgroundColor: Colors.black,
-            expandedHeight: 200.0,
+            backgroundColor: theme.scaffoldBackgroundColor,
+            expandedHeight: 120.0,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text('AI Tools',
-                  style: GoogleFonts.oswald(fontWeight: FontWeight.bold)),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  )),
               centerTitle: true,
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.black, Colors.grey[900]!],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(16.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate(
                 [
                   _buildFeatureCard(
                     context,
+                    theme: theme,
                     icon: Icons.flash_on,
                     title: 'Generate Summary',
                     subtitle:
                         'Summarize any text, article, or document instantly.',
-                    color: const Color(0xFF1E3A8A), // A deep blue shade
+                    color: Colors.blueAccent,
                     onTap: () => context.push('/summary'),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _buildFeatureCard(
                     context,
+                    theme: theme,
                     icon: Icons.filter_none,
                     title: 'Flashcards',
                     subtitle:
                         'Create flashcards from any content to aid your learning.',
-                    color: const Color(0xFF6EE7B7), // A mint green shade
+                    color: Colors.greenAccent,
                     onTap: () => context.push('/flashcards'),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _buildFeatureCard(
                     context,
+                    theme: theme,
                     icon: Icons.question_answer,
                     title: 'Generate Quiz',
                     subtitle:
                         'Create a quiz from any content to test your knowledge.',
-                    color: const Color(0xFFC026D3), // A fuchsia shade
+                    color: Colors.purpleAccent,
                     onTap: () => context.push('/quiz'),
                   ),
                 ],
@@ -74,7 +71,8 @@ class AiToolsScreen extends StatelessWidget {
   }
 
   Widget _buildFeatureCard(BuildContext context,
-      {required IconData icon,
+      {required ThemeData theme,
+      required IconData icon,
       required String title,
       required String subtitle,
       required Color color,
@@ -102,14 +100,14 @@ class AiToolsScreen extends StatelessWidget {
             Icon(icon, size: 40, color: color),
             const SizedBox(height: 16),
             Text(title,
-                style: GoogleFonts.oswald(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                )),
             const SizedBox(height: 8),
             Text(subtitle,
-                style: GoogleFonts.roboto(
-                    fontSize: 16, color: Colors.white70, height: 1.5)),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
+                )),
           ],
         ),
       ),
