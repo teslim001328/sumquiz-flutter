@@ -22,20 +22,23 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildSettingsCard(context, 'Account', 'Manage your profile and login info', const AccountScreen()),
-            const SizedBox(height: 16),
-            _buildSettingsCard(context, 'Preferences', 'Adjust app experience', const PreferencesScreen()),
-            const SizedBox(height: 16),
-            _buildSettingsCard(context, 'Data & Storage', 'Manage offline files and cache', const DataStorageScreen()),
-            const SizedBox(height: 16),
-            _buildSettingsCard(context, 'Subscription', 'View your plan & upgrade', const SubscriptionScreen()),
-            const SizedBox(height: 16),
-            _buildSettingsCard(context, 'Privacy & About', 'Legal, support & app info', const PrivacyAboutScreen()),
-          ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              _buildSettingsCard(context, 'Account', 'Manage your profile and login info', const AccountScreen()),
+              const SizedBox(height: 16),
+              _buildSettingsCard(context, 'Preferences', 'Adjust app experience', const PreferencesScreen()),
+              const SizedBox(height: 16),
+              _buildSettingsCard(context, 'Data & Storage', 'Manage offline files and cache', const DataStorageScreen()),
+              const SizedBox(height: 16),
+              _buildSettingsCard(context, 'Subscription', 'View your plan & upgrade', const SubscriptionScreen()),
+              const SizedBox(height: 16),
+              _buildSettingsCard(context, 'Privacy & About', 'Legal, support & app info', const PrivacyAboutScreen()),
+            ],
+          ),
         ),
       ),
     );

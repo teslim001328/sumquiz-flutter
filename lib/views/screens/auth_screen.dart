@@ -79,12 +79,15 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: _authMode == AuthMode.Login
-                ? _buildLoginForm(theme)
-                : _buildSignUpForm(theme),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: _authMode == AuthMode.Login
+                  ? _buildLoginForm(theme)
+                  : _buildSignUpForm(theme),
+            ),
           ),
         ),
       ),

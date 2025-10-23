@@ -25,44 +25,52 @@ class AiToolsScreen extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.all(16.0),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  _buildFeatureCard(
-                    context,
-                    theme: theme,
-                    icon: Icons.flash_on,
-                    title: 'Generate Summary',
-                    subtitle:
-                        'Summarize any text, article, or document instantly.',
-                    color: Colors.blueAccent,
-                    onTap: () => context.push('/summary'),
+            padding: const EdgeInsets.all(24.0),
+            sliver: SliverLayoutBuilder(
+              builder: (context, constraints) {
+                // Determine the number of columns based on the available width.
+                final crossAxisCount = (constraints.crossAxisExtent / 350).floor().clamp(1, 3);
+
+                return SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 20.0,
+                    mainAxisSpacing: 20.0,
+                    childAspectRatio: 1.5, // Adjust this ratio to fit your card content
                   ),
-                  const SizedBox(height: 16),
-                  _buildFeatureCard(
-                    context,
-                    theme: theme,
-                    icon: Icons.filter_none,
-                    title: 'Flashcards',
-                    subtitle:
-                        'Create flashcards from any content to aid your learning.',
-                    color: Colors.greenAccent,
-                    onTap: () => context.push('/flashcards'),
+                  delegate: SliverChildListDelegate(
+                    [
+                      _buildFeatureCard(
+                        context,
+                        theme: theme,
+                        icon: Icons.flash_on,
+                        title: 'Generate Summary',
+                        subtitle: 'Summarize any text, article, or document instantly.',
+                        color: Colors.blueAccent,
+                        onTap: () => context.push('/summary'),
+                      ),
+                      _buildFeatureCard(
+                        context,
+                        theme: theme,
+                        icon: Icons.filter_none,
+                        title: 'Flashcards',
+                        subtitle: 'Create flashcards from any content to aid your learning.',
+                        color: Colors.greenAccent,
+                        onTap: () => context.push('/flashcards'),
+                      ),
+                      _buildFeatureCard(
+                        context,
+                        theme: theme,
+                        icon: Icons.question_answer,
+                        title: 'Generate Quiz',
+                        subtitle: 'Create a quiz from any content to test your knowledge.',
+                        color: Colors.purpleAccent,
+                        onTap: () => context.push('/quiz'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildFeatureCard(
-                    context,
-                    theme: theme,
-                    icon: Icons.question_answer,
-                    title: 'Generate Quiz',
-                    subtitle:
-                        'Create a quiz from any content to test your knowledge.',
-                    color: Colors.purpleAccent,
-                    onTap: () => context.push('/quiz'),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -96,6 +104,7 @@ class AiToolsScreen extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center, // Center content vertically
           children: [
             Icon(icon, size: 40, color: color),
             const SizedBox(height: 16),

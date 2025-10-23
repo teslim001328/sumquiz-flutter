@@ -276,17 +276,22 @@ class _QuizScreenState extends State<QuizScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Stack(
-        children: [
-          _buildContent(theme),
-          if (_isLoading)
-            Container(
-              color: theme.scaffoldBackgroundColor.withAlpha(178),
-              child: Center(
-                  child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
-            ),
-        ],
-      ),
+      body: Center(
+        child: ConstrainedBox(
+           constraints: const BoxConstraints(maxWidth: 800),
+           child: Stack(
+            children: [
+              _buildContent(theme),
+              if (_isLoading)
+                Container(
+                  color: theme.scaffoldBackgroundColor.withAlpha(178),
+                  child: Center(
+                      child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
+                ),
+            ],
+          ),
+        ),
+      )
     );
   }
 

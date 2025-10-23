@@ -25,18 +25,23 @@ class SubscriptionScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildPlanCard(theme, user),
-            const SizedBox(height: 24),
-            _buildPricingTable(theme),
-            const SizedBox(height: 32),
-            _buildUpgradeButton(theme),
-            const SizedBox(height: 16),
-            _buildRestoreButton(theme),
-          ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildPlanCard(theme, user),
+                const SizedBox(height: 24),
+                _buildPricingTable(theme),
+                const SizedBox(height: 32),
+                _buildUpgradeButton(theme),
+                const SizedBox(height: 16),
+                _buildRestoreButton(theme),
+              ],
+            ),
+          ),
         ),
       ),
     );

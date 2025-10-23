@@ -32,14 +32,19 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildDarkModeTile(themeProvider, theme),
-            const Divider(height: 32),
-            _buildFontSizeSelector(themeProvider, theme),
-          ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildDarkModeTile(themeProvider, theme),
+                const Divider(height: 32),
+                _buildFontSizeSelector(themeProvider, theme),
+              ],
+            ),
+          ),
         ),
       ),
     );

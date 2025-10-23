@@ -128,21 +128,25 @@ class _ProgressScreenState extends State<ProgressScreen> {
                 _statsFuture = _loadStats(user.uid);
               });
             },
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTopMetrics(stats, theme),
-                  const SizedBox(height: 24),
-                  _buildReviewBanner(stats['dueForReviewCount'] as int? ?? 0, theme),
-                  const SizedBox(height: 24),
-                  _buildUpcomingReviews(stats['upcomingReviews']
-                          as List<MapEntry<DateTime, int>>? ??
-                      [], theme),
-                ],
-              ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTopMetrics(stats, theme),
+                    const SizedBox(height: 32),
+                    _buildReviewBanner(stats['dueForReviewCount'] as int? ?? 0, theme),
+                    const SizedBox(height: 32),
+                    _buildUpcomingReviews(stats['upcomingReviews']
+                            as List<MapEntry<DateTime, int>>? ??
+                        [], theme),
+                  ],
+                ),
+              ),)
             ),
           );
         },
@@ -192,40 +196,39 @@ class _ProgressScreenState extends State<ProgressScreen> {
         Text('Top Metrics',
             style: theme.textTheme.headlineMedium),
         const SizedBox(height: 16),
-        Row(
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
           children: [
-            Expanded(
-                child: _buildMetricChip(
-                    theme, 'Summaries', (stats['summariesCount'] ?? 0).toString())),
-            const SizedBox(width: 10),
-            Expanded(
-                child: _buildMetricChip(
-                    theme, 'Quizzes', (stats['quizzesCount'] ?? 0).toString())),
+            _buildMetricChip(
+                theme, 'Summaries', (stats['summariesCount'] ?? 0).toString()),
+            _buildMetricChip(
+                theme, 'Quizzes', (stats['quizzesCount'] ?? 0).toString()),
+            _buildMetricChip(
+                theme, 'Flashcards', (stats['flashcardsCount'] ?? 0).toString()),
           ],
-        ),
-        const SizedBox(height: 10),
-        _buildMetricChip(
-            theme, 'Flashcards', (stats['flashcardsCount'] ?? 0).toString(),
-            isFullWidth: true),
+        )
       ],
     );
   }
 
-  Widget _buildMetricChip(ThemeData theme, String label, String value,
-      {bool isFullWidth = false}) {
+  Widget _buildMetricChip(ThemeData theme, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      width: 250, // Give a fixed width to each chip for a uniform look
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor)
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(value,
-              style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 4),
+              style: theme.textTheme.displaySmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
           Text(label,
-              style: theme.textTheme.bodyMedium),
+              style: theme.textTheme.titleMedium),
         ],
       ),
     );
@@ -261,9 +264,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$dueCount items',
-                    style: theme.textTheme.headlineMedium),
+                    style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.onSurface)),
                 Text('Due for review today',
-                    style: theme.textTheme.bodyMedium),
+                    style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface)),
               ],
             ),
           ),
@@ -284,18 +287,23 @@ class _ProgressScreenState extends State<ProgressScreen> {
             style: theme.textTheme.headlineMedium),
         const SizedBox(height: 16),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
             Text(totalUpcoming.toString(),
-                style: theme.textTheme.headlineLarge),
+                style: theme.textTheme.displayMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
-            Text('in the next 7 days',
-                style:
-                    theme.textTheme.bodyMedium),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text('reviews in the next 7 days',
+                  style:
+                      theme.textTheme.titleMedium),
+            ),
           ],
         ),
         const SizedBox(height: 20),
         SizedBox(
-          height: 150,
+          height: 180,
           child: BarChart(
             BarChartData(
               alignment: BarChartAlignment.spaceAround,

@@ -30,24 +30,29 @@ class DataStorageScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildDataCard(
-              context,
-              theme: theme,
-              title: 'Clear Local Data / Cache',
-              onTap: () => _showClearCacheConfirmation(context, localDB),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildDataCard(
+                  context,
+                  theme: theme,
+                  title: 'Clear Local Data / Cache',
+                  onTap: () => _showClearCacheConfirmation(context, localDB),
+                ),
+                const SizedBox(height: 16),
+                _buildDataCard(
+                  context,
+                  theme: theme,
+                  title: 'Manage Offline Files',
+                  onTap: () => _showOfflineFilesModal(context, theme, localDB, user),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildDataCard(
-              context,
-              theme: theme,
-              title: 'Manage Offline Files',
-              onTap: () => _showOfflineFilesModal(context, theme, localDB, user),
-            ),
-          ],
+          ),
         ),
       ),
     );

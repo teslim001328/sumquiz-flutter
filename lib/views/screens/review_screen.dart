@@ -95,16 +95,33 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    Widget content;
+
+    if (_isLoading) {
+      content = Center(child: CircularProgressIndicator(color: theme.colorScheme.primary));
+    } else if (_error != null) {
+      content = _buildErrorView(theme);
+    } else {
+      content = _buildBody(theme);
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Review', style: theme.textTheme.headlineMedium),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
-          : _error != null ? _buildErrorView(theme) : _buildBody(theme),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600), // Constrain content width
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: content,
+          ),
+        ),
+      ),
     );
   }
 
@@ -118,96 +135,84 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Widget _buildErrorView(ThemeData theme) {
      return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 100, color: theme.colorScheme.error),
-            const SizedBox(height: 24),
-            Text(
-              'An Error Occurred',
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 100, color: theme.colorScheme.error),
+          const SizedBox(height: 24),
+          Text(
+            'An Error Occurred',
+            style: theme.textTheme.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            style: theme.textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildNoCardsDueView(ThemeData theme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline_rounded, size: 100, color: theme.colorScheme.primary),
-            const SizedBox(height: 24),
-            Text(
-              'All Caught Up!',
-              style: theme.textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'You have no flashcards due for review right now. Great job!',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.check_circle_outline_rounded, size: 100, color: theme.colorScheme.primary),
+        const SizedBox(height: 24),
+        Text(
+          'All Caught Up!',
+          style: theme.textTheme.headlineSmall,
+          textAlign: TextAlign.center,
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(
+          'You have no flashcards due for review right now. Great job!',
+          style: theme.textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
   Widget _buildCardsDueView(ThemeData theme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'You have',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${_dueFlashcards.length}',
-              style: theme.textTheme.headlineLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontSize: 80,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _dueFlashcards.length == 1 ? 'flashcard due for review' : 'flashcards due for review',
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: _startReviewSession,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Start Review', style: TextStyle(fontSize: 18)),
-            ),
-          ],
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'You have',
+          style: theme.textTheme.titleLarge,
         ),
-      ),
+        const SizedBox(height: 16),
+        Text(
+          '${_dueFlashcards.length}',
+          style: theme.textTheme.displayLarge?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          _dueFlashcards.length == 1 ? 'flashcard due for review' : 'flashcards due for review',
+          style: theme.textTheme.titleLarge,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 40),
+        ElevatedButton(
+          onPressed: _startReviewSession,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+             backgroundColor: theme.colorScheme.primary,
+             foregroundColor: theme.colorScheme.onPrimary,
+          ),
+          child: const Text('Start Review', style: TextStyle(fontSize: 18)),
+        ),
+      ],
     );
   }
 }

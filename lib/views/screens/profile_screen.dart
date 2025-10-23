@@ -25,14 +25,22 @@ class ProfileScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Colors.white, // White background as per blueprint
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('Profile', style: theme.textTheme.headlineMedium),
+        title: Text(
+          'Profile',
+          style: GoogleFonts.poppins( // Poppins font
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+            fontSize: 22,
+          ),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_outlined, color: theme.iconTheme.color),
+            icon: const Icon(Icons.settings_outlined, color: Colors.black),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -41,207 +49,44 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 600) {
-            return _buildWideLayout(context, user, quizViewModel, authService, theme);
-          } else {
-            return _buildNarrowLayout(context, user, quizViewModel, authService, theme);
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildNarrowLayout(BuildContext context, UserModel user, QuizViewModel quizViewModel, AuthService authService, ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 20),
-          _buildProfileAvatar(user, theme),
-          const SizedBox(height: 16),
-          Text(user.name, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 4),
-          Text(user.email, style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 12),
-          _buildSubscriptionChip(user, theme),
-          const SizedBox(height: 32),
-          _buildStatsSection(quizViewModel, theme),
-          const SizedBox(height: 32),
-          if (user.subscriptionStatus != 'Pro') ...[
-            _buildUpgradeCard(context, theme),
-            const SizedBox(height: 32),
-          ],
-          _buildLogOutButton(context, authService, theme),
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWideLayout(BuildContext context, UserModel user, QuizViewModel quizViewModel, AuthService authService, ThemeData theme) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1000),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(40.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    _buildProfileAvatar(user, theme, radius: 60),
-                    const SizedBox(height: 20),
-                    Text(user.name, style: theme.textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    Text(user.email, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 16),
-                    _buildSubscriptionChip(user, theme),
-                    const SizedBox(height: 30),
-                     _buildLogOutButton(context, authService, theme),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 40),
-              Expanded(
-                flex: 3,
-                child: Column(
-                  children: [
-                    _buildStatsSection(quizViewModel, theme),
-                    const SizedBox(height: 32),
-                    if (user.subscriptionStatus != 'Pro')
-                      _buildUpgradeCard(context, theme),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildProfileAvatar(UserModel user, ThemeData theme, {double radius = 50}) {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: theme.colorScheme.secondaryContainer,
-      child: Text(
-        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-        style: GoogleFonts.poppins(
-          fontSize: radius * 0.8,
-          fontWeight: FontWeight.bold,
-          color: theme.colorScheme.onSecondaryContainer,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubscriptionChip(UserModel user, ThemeData theme) {
-    bool isPro = user.subscriptionStatus == 'Pro';
-    return Chip(
-      label: Text(isPro ? 'Pro User' : 'Free Plan',
-          style: TextStyle(color: theme.colorScheme.onSecondaryContainer)),
-      backgroundColor: theme.colorScheme.secondaryContainer,
-      avatar: isPro ? Icon(Icons.star, color: theme.colorScheme.onSecondaryContainer) : null,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    );
-  }
-
-  Widget _buildStatsSection(QuizViewModel quizViewModel, ThemeData theme) {
-    final quizzesTaken = quizViewModel.quizzes.length;
-    final averageScore = quizViewModel.averageScore;
-    final bestScore = quizViewModel.bestScore;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: theme.dividerColor)
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatCard('Quizzes', quizzesTaken.toString(), theme),
-          _buildStatCard('Avg Score', '${averageScore.toStringAsFixed(1)}%', theme),
-          _buildStatCard('Best Score', '${bestScore.toStringAsFixed(1)}%', theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String label, String value, ThemeData theme) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-                color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Text(label, style: theme.textTheme.bodyMedium),
-      ],
-    );
-  }
-
-  Widget _buildUpgradeCard(BuildContext context, ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withAlpha(200),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (context) => const UpgradeModal(),
-          ),
-          borderRadius: BorderRadius.circular(15),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500), // Constrained width for responsive center column
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.star_rounded, color: theme.colorScheme.onPrimary, size: 40),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Upgrade to Pro',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                              color: theme.colorScheme.onPrimary, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('Unlock all features and get unlimited access',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.onPrimary.withAlpha(200))),
-                    ],
+                const SizedBox(height: 20),
+                _buildProfileAvatar(user),
+                const SizedBox(height: 20),
+                Text(
+                  user.name,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
                 ),
-                 const SizedBox(width: 20),
-                Icon(Icons.arrow_forward_ios, color: theme.colorScheme.onPrimary, size: 20),
+                const SizedBox(height: 8),
+                Text(
+                  user.email,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildSubscriptionChip(user),
+                const SizedBox(height: 40),
+                _buildStatsSection(quizViewModel),
+                const SizedBox(height: 40),
+                if (user.subscriptionStatus != 'Pro') ...[
+                  _buildUpgradeButton(context),
+                  const SizedBox(height: 24),
+                ],
+                _buildLogOutButton(context, authService),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -250,22 +95,111 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLogOutButton(
-      BuildContext context, AuthService authService, ThemeData theme) {
+  Widget _buildProfileAvatar(UserModel user) {
+    return CircleAvatar(
+      radius: 50,
+      backgroundColor: Colors.grey[200], // Light gray background for avatar
+      child: Text(
+        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+        style: GoogleFonts.poppins(
+          fontSize: 40,
+          fontWeight: FontWeight.bold,
+          color: Colors.black,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionChip(UserModel user) {
+    bool isPro = user.subscriptionStatus == 'Pro';
+    return Chip(
+      label: Text(
+        isPro ? 'Pro User' : 'Free Plan',
+        style: GoogleFonts.poppins(
+          fontWeight: FontWeight.w500,
+          color: isPro ? Colors.white : Colors.black,
+        ),
+      ),
+      backgroundColor: isPro ? Colors.black : Colors.grey[200],
+      avatar: isPro ? const Icon(Icons.star, color: Colors.white, size: 18) : null,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    );
+  }
+
+  Widget _buildStatsSection(QuizViewModel quizViewModel) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _buildStatCard('Quizzes', quizViewModel.quizzes.length.toString()),
+        _buildStatCard('Avg Score', '${quizViewModel.averageScore.toStringAsFixed(1)}%'),
+        _buildStatCard('Best Score', '${quizViewModel.bestScore.toStringAsFixed(1)}%'),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUpgradeButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      child: OutlinedButton.icon(
-        icon: Icon(Icons.logout, color: theme.colorScheme.error),
-        label: Text('Log Out', style: TextStyle(color: theme.colorScheme.error)),
-        onPressed: () async {
-          await authService.signOut();
-        },
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          side: BorderSide(color: theme.colorScheme.error.withOpacity(0.5)),
+      child: ElevatedButton(
+        onPressed: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const UpgradeModal(),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.black, // Black background for prominent button
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+        ),
+        child: Text(
+          'Upgrade to Pro',
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogOutButton(BuildContext context, AuthService authService) {
+    return TextButton(
+      onPressed: () async {
+        await authService.signOut();
+      },
+      child: Text(
+        'Log Out',
+        style: GoogleFonts.poppins(
+          color: Colors.red[700], // Simple text button for logout
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

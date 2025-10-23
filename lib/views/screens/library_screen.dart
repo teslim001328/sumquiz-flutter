@@ -302,14 +302,33 @@ class LibraryScreenState extends State<LibraryScreen>
           : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1], theme);
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 80.0),
-      itemCount: filteredItems.length,
-      itemBuilder: (context, index) {
-        final item = filteredItems[index];
-        return _buildLibraryCard(item, userId, theme);
-      },
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 600) {
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 80.0),
+          itemCount: filteredItems.length,
+          itemBuilder: (context, index) {
+            final item = filteredItems[index];
+            return _buildLibraryCard(item, userId, theme);
+          },
+        );
+      } else {
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 80.0),
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 400.0, // Max width of each item
+            childAspectRatio: 3.5, // Adjust aspect ratio to look good
+            crossAxisSpacing: 16.0,
+            mainAxisSpacing: 16.0,
+          ),
+          itemCount: filteredItems.length,
+          itemBuilder: (context, index) {
+            final item = filteredItems[index];
+            return _buildLibraryCard(item, userId, theme);
+          },
+        );
+      }
+    });
   }
 
   Widget _buildLibraryCard(LibraryItem item, String userId, ThemeData theme) {

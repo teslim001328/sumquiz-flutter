@@ -263,21 +263,26 @@ class SummaryScreenState extends State<SummaryScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: _buildBody(theme),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800), 
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: _buildBody(theme),
+              ),
+              if (_state == SummaryState.loading || _isGeneratingQuiz)
+                Container(
+                  color: theme.scaffoldBackgroundColor.withAlpha(128),
+                  child: Center(
+                      child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
+                ),
+            ],
           ),
-          if (_state == SummaryState.loading || _isGeneratingQuiz)
-            Container(
-              color: theme.scaffoldBackgroundColor.withAlpha(128),
-              child: Center(
-                  child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
-            ),
-        ],
-      ),
+        ),
+      )
     );
   }
 

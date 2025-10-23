@@ -226,34 +226,39 @@ class EditContentScreenState extends State<EditContentScreen> {
             ),
         ],
       ),
-      body: IgnorePointer(
-        ignoring: _isLoading,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (widget.content.type != 'flashcard')
-                TextFormField(
-                  controller: _titleController,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold),
-                  decoration:
-                      _inputDecoration(label: 'Title', hint: 'Enter title'),
-                ),
-              const SizedBox(height: 24),
-              if (widget.content.type == 'summary')
-                _buildSummaryEditor()
-              else if (widget.content.type == 'quiz')
-                _buildQuizEditor()
-              else if (widget.content.type == 'flashcard')
-                _buildFlashcardEditor(),
-            ],
+      body: Center(
+        child: ConstrainedBox(
+           constraints: const BoxConstraints(maxWidth: 800),
+           child: IgnorePointer(
+            ignoring: _isLoading,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (widget.content.type != 'flashcard')
+                    TextFormField(
+                      controller: _titleController,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold),
+                      decoration:
+                          _inputDecoration(label: 'Title', hint: 'Enter title'),
+                    ),
+                  const SizedBox(height: 24),
+                  if (widget.content.type == 'summary')
+                    _buildSummaryEditor()
+                  else if (widget.content.type == 'quiz')
+                    _buildQuizEditor()
+                  else if (widget.content.type == 'flashcard')
+                    _buildFlashcardEditor(),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
+      )
     );
   }
 

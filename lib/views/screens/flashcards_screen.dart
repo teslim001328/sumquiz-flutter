@@ -175,8 +175,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
           name: 'flashcards.save', error: e, stackTrace: s);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving set: $e')),
-        );
+          SnackBar(content: Text('Error saving set: $e')));
       }
     } finally {
       if (mounted) {
@@ -240,18 +239,23 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
             ),
         ],
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildContent(theme),
-          if (_isLoading)
-            Container(
-              color: theme.scaffoldBackgroundColor.withAlpha(179),
-              child: Center(
-                  child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
-            ),
-        ],
-      ),
+      body: Center(
+        child: ConstrainedBox(
+           constraints: const BoxConstraints(maxWidth: 800),
+           child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildContent(theme),
+              if (_isLoading)
+                Container(
+                  color: theme.scaffoldBackgroundColor.withAlpha(179),
+                  child: Center(
+                      child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
+                ),
+            ],
+          ),
+        ),
+      )
     );
   }
 
