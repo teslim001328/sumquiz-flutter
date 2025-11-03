@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../models/user_model.dart';
 import '../../models/library_item.dart';
 import '../../services/firestore_service.dart';
 import '../../services/local_database_service.dart';
+import '../../view_models/quiz_view_model.dart';
 import '../../models/editable_content.dart';
 import '../../models/summary_model.dart';
 import '../../models/quiz_model.dart';
 import '../../models/flashcard_set.dart';
-import '../../models/local_quiz.dart';
-import '../../models/local_quiz_question.dart';
-import '../screens/edit_content_screen.dart';
+import 'edit_content_screen.dart';
 import 'summary_screen.dart';
 import 'quiz_screen.dart';
 import 'flashcards_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/add_content_modal.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -38,7 +37,6 @@ class LibraryScreenState extends State<LibraryScreen>
 
   Stream<Map<String, List<LibraryItem>>>? _allItemsStream;
   Stream<List<LibraryItem>>? _summariesStream;
-  Stream<List<LibraryItem>>? _quizzesStream;
   Stream<List<LibraryItem>>? _flashcardsStream;
   String? _userIdForStreams;
 
@@ -54,25 +52,32 @@ class LibraryScreenState extends State<LibraryScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final user = Provider.of<User?>(context);
+    final user = Provider.of<UserModel?>(context);
     if (user != null && user.uid != _userIdForStreams) {
       _userIdForStreams = user.uid;
       _initializeStreams(user.uid);
+      if (mounted) {
+        Provider.of<QuizViewModel>(context, listen: false).initializeForUser(user.uid);
+      }
+    } else if (user == null && _userIdForStreams != null) {
+      _clearStreams();
     }
   }
 
   void _initializeStreams(String userId) {
     setState(() {
-      _allItemsStream =
-          _firestoreService.streamAllItems(userId).asBroadcastStream();
-      _summariesStream = _firestoreService
-          .streamItems(userId, 'summaries')
-          .asBroadcastStream();
-      _quizzesStream =
-          _firestoreService.streamItems(userId, 'quizzes').asBroadcastStream();
-      _flashcardsStream = _firestoreService
-          .streamItems(userId, 'flashcards')
-          .asBroadcastStream();
+      _allItemsStream = _firestoreService.streamAllItems(userId).asBroadcastStream();
+      _summariesStream = _firestoreService.streamItems(userId, 'summaries').asBroadcastStream();
+      _flashcardsStream = _firestoreService.streamItems(userId, 'flashcards').asBroadcastStream();
+    });
+  }
+
+  void _clearStreams() {
+    setState(() {
+      _userIdForStreams = null;
+      _allItemsStream = null;
+      _summariesStream = null;
+      _flashcardsStream = null;
     });
   }
 
@@ -84,8 +89,7 @@ class LibraryScreenState extends State<LibraryScreen>
     super.dispose();
   }
 
-  void _onSearchChanged() =>
-      setState(() => _searchQuery = _searchController.text.toLowerCase());
+  void _onSearchChanged() => setState(() => _searchQuery = _searchController.text.toLowerCase());
 
   Future<void> _loadOfflineModePreference() async {
     final isOffline = await _localDb.isOfflineModeEnabled();
@@ -94,7 +98,7 @@ class LibraryScreenState extends State<LibraryScreen>
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<User?>(context);
+    final user = Provider.of<UserModel?>(context);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -103,10 +107,7 @@ class LibraryScreenState extends State<LibraryScreen>
       body: user == null ? _buildLoggedOutView(theme) : _buildLibraryContent(user, theme),
       floatingActionButton: user != null && !_isOfflineMode
           ? FloatingActionButton(
-              onPressed: () => showModalBottomSheet(
-                  context: context,
-                  builder: (context) => const AddContentModal(),
-                  isScrollControlled: true),
+              onPressed: () => _showCreateOptions(context),
               backgroundColor: theme.cardColor,
               foregroundColor: theme.iconTheme.color,
               child: const Icon(Icons.add),
@@ -119,13 +120,16 @@ class LibraryScreenState extends State<LibraryScreen>
     return AppBar(
       backgroundColor: theme.scaffoldBackgroundColor,
       elevation: 0,
-      title: Text('Library',
-          style: theme.textTheme.headlineMedium),
+      title: Text('Library', style: theme.textTheme.headlineMedium),
       centerTitle: true,
       actions: [
         IconButton(
           icon: const Icon(Icons.settings_outlined),
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen())),
+          onPressed: () {
+            if (mounted) {
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+            }
+          }
         ),
       ],
     );
@@ -140,8 +144,7 @@ class LibraryScreenState extends State<LibraryScreen>
           children: [
             Icon(Icons.cloud_off_outlined, size: 80, color: theme.iconTheme.color),
             const SizedBox(height: 24),
-            Text('Please Log In',
-                style: theme.textTheme.headlineMedium),
+            Text('Please Log In', style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
               'Log in to access your synchronized library across all your devices.',
@@ -161,14 +164,12 @@ class LibraryScreenState extends State<LibraryScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.signal_wifi_off_outlined,
-                size: 80, color: theme.iconTheme.color),
+            Icon(Icons.signal_wifi_off_outlined, size: 80, color: theme.iconTheme.color),
             const SizedBox(height: 24),
-            Text('Offline Mode',
-                style: theme.textTheme.headlineMedium),
+            Text('Offline Mode', style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
-              'You are currently in offline mode. Only locally stored content is available. Turn off offline mode in settings to sync with the cloud.',
+              'You are currently in offline mode. Only locally stored content is available.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -178,7 +179,7 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Widget _buildLibraryContent(User user, ThemeData theme) {
+  Widget _buildLibraryContent(UserModel user, ThemeData theme) {
     if (_isOfflineMode) {
       return _buildOfflineState(theme);
     }
@@ -191,7 +192,7 @@ class LibraryScreenState extends State<LibraryScreen>
             children: [
               _buildCombinedList(user.uid, theme),
               _buildLibraryList(user.uid, 'summaries', _summariesStream, theme),
-              _buildLibraryList(user.uid, 'quizzes', _quizzesStream, theme),
+              _buildQuizList(user.uid, theme),
               _buildLibraryList(user.uid, 'flashcards', _flashcardsStream, theme),
             ],
           ),
@@ -215,9 +216,7 @@ class LibraryScreenState extends State<LibraryScreen>
               filled: true,
               fillColor: theme.cardColor,
               contentPadding: const EdgeInsets.symmetric(vertical: 15.0),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
             ),
           ),
           const SizedBox(height: 16),
@@ -237,8 +236,7 @@ class LibraryScreenState extends State<LibraryScreen>
         Tab(text: 'Quizzes'),
         Tab(text: 'Flashcards'),
       ],
-      indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(30), color: theme.colorScheme.secondaryContainer),
+      indicator: BoxDecoration(borderRadius: BorderRadius.circular(30), color: theme.colorScheme.secondaryContainer),
       labelStyle: GoogleFonts.roboto(fontWeight: FontWeight.bold),
       unselectedLabelColor: theme.textTheme.bodySmall?.color,
       labelColor: theme.colorScheme.onSecondaryContainer,
@@ -247,59 +245,79 @@ class LibraryScreenState extends State<LibraryScreen>
   }
 
   Widget _buildCombinedList(String userId, ThemeData theme) {
-    return StreamBuilder<Map<String, List<LibraryItem>>>(
-      stream: _allItemsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData ||
-            snapshot.data == null ||
-            snapshot.data!.values.every((list) => list.isEmpty)) {
-          return _buildNoContentState('all', theme);
-        }
+    return Consumer<QuizViewModel>(
+      builder: (context, quizViewModel, child) {
+        return StreamBuilder<Map<String, List<LibraryItem>>>(
+          stream: _allItemsStream,
+          builder: (context, snapshot) {
+            if (quizViewModel.isLoading || (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData)) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        final allItems = snapshot.data!.values.expand((list) => list).toList();
-        allItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-        return _buildContentList(allItems, userId, theme);
+            final firestoreItems = snapshot.hasData ? snapshot.data!.values.expand((list) => list).toList() : <LibraryItem>[];
+            final localQuizItems = quizViewModel.quizzes.map((quiz) => 
+              LibraryItem(id: quiz.id, title: quiz.title, type: LibraryItemType.quiz, timestamp: Timestamp.fromDate(quiz.timestamp))
+            ).toList();
+
+            final firestoreQuizIds = localQuizItems.map((q) => q.id).toSet();
+            final filteredFirestoreItems = firestoreItems.where((item) => item.type != LibraryItemType.quiz || !firestoreQuizIds.contains(item.id));
+
+            final allItems = [...filteredFirestoreItems, ...localQuizItems];
+            allItems.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+            if (allItems.isEmpty) {
+              return _buildNoContentState('all', theme);
+            }
+            return _buildContentList(allItems, userId, theme);
+          },
+        );
       },
     );
   }
 
-  Widget _buildLibraryList(
-      String userId, String type, Stream<List<LibraryItem>>? stream, ThemeData theme) {
+  Widget _buildQuizList(String userId, ThemeData theme) {
+    return Consumer<QuizViewModel>(
+      builder: (context, quizViewModel, child) {
+        if (quizViewModel.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (quizViewModel.quizzes.isEmpty) {
+          return _buildNoContentState('quizzes', theme);
+        }
+
+        final quizItems = quizViewModel.quizzes.map((quiz) => 
+          LibraryItem(id: quiz.id, title: quiz.title, type: LibraryItemType.quiz, timestamp: Timestamp.fromDate(quiz.timestamp))
+        ).toList();
+
+        return _buildContentList(quizItems, userId, theme);
+      },
+    );
+  }
+
+  Widget _buildLibraryList(String userId, String type, Stream<List<LibraryItem>>? stream, ThemeData theme) {
     return StreamBuilder<List<LibraryItem>>(
       stream: stream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (!snapshot.hasData ||
-            snapshot.data == null ||
-            snapshot.data!.isEmpty) {
+        if (!snapshot.hasData || snapshot.data == null || snapshot.data!.isEmpty) {
           return _buildNoContentState(type, theme);
         }
-
-        final items = snapshot.data!;
-        return _buildContentList(items, userId, theme);
+        return _buildContentList(snapshot.data!, userId, theme);
       },
     );
   }
 
   Widget _buildContentList(List<LibraryItem> items, String userId, ThemeData theme) {
-    final filteredItems = items.where((item) {
-      return item.title.toLowerCase().contains(_searchQuery);
-    }).toList();
+    final filteredItems = items.where((item) => item.title.toLowerCase().contains(_searchQuery)).toList();
 
     if (filteredItems.isEmpty) {
       if (items.isNotEmpty && _searchQuery.isNotEmpty) {
         return _buildNoSearchResultsState(theme);
       }
-      return _buildNoContentState(_tabController.index == 0
-          ? 'all'
-          : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1], theme);
+      return _buildNoContentState(_tabController.index == 0 ? 'all' : ['summaries', 'quizzes', 'flashcards'][_tabController.index - 1], theme);
     }
 
     return LayoutBuilder(builder: (context, constraints) {
@@ -307,25 +325,19 @@ class LibraryScreenState extends State<LibraryScreen>
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 80.0),
           itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _buildLibraryCard(item, userId, theme);
-          },
+          itemBuilder: (context, index) => _buildLibraryCard(filteredItems[index], userId, theme),
         );
       } else {
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(24.0, 8.0, 24.0, 80.0),
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 400.0, // Max width of each item
-            childAspectRatio: 3.5, // Adjust aspect ratio to look good
+            maxCrossAxisExtent: 400.0,
+            childAspectRatio: 3.5,
             crossAxisSpacing: 16.0,
             mainAxisSpacing: 16.0,
           ),
           itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _buildLibraryCard(item, userId, theme);
-          },
+          itemBuilder: (context, index) => _buildLibraryCard(filteredItems[index], userId, theme),
         );
       }
     });
@@ -337,7 +349,7 @@ class LibraryScreenState extends State<LibraryScreen>
       margin: const EdgeInsets.only(bottom: 12.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: InkWell(
-        onTap: () => _navigateToContent(userId, item),
+        onTap: () => _navigateToContent(context, userId, item),
         borderRadius: BorderRadius.circular(15),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -349,20 +361,16 @@ class LibraryScreenState extends State<LibraryScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title,
-                        style: theme.textTheme.titleMedium,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
+                    Text(item.title, style: theme.textTheme.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(item.type.toString().split('.').last,
-                        style:
-                            TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12)),
+                    Text(item.type.toString().split('.').last, style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 12)),
                   ],
                 ),
               ),
               IconButton(
-                  icon: Icon(Icons.more_horiz, color: theme.iconTheme.color),
-                  onPressed: () => _showItemMenu(userId, item, theme)),
+                icon: Icon(Icons.more_horiz, color: theme.iconTheme.color),
+                onPressed: () => _showItemMenu(context, userId, item, theme),
+              ),
             ],
           ),
         ),
@@ -372,12 +380,9 @@ class LibraryScreenState extends State<LibraryScreen>
 
   Icon _getIconForType(LibraryItemType type) {
     switch (type) {
-      case LibraryItemType.summary:
-        return const Icon(Icons.article_outlined, color: Colors.blueAccent);
-      case LibraryItemType.quiz:
-        return const Icon(Icons.quiz_outlined, color: Colors.greenAccent);
-      case LibraryItemType.flashcards:
-        return const Icon(Icons.style_outlined, color: Colors.orangeAccent);
+      case LibraryItemType.summary: return const Icon(Icons.article_outlined, color: Colors.blueAccent);
+      case LibraryItemType.quiz: return const Icon(Icons.quiz_outlined, color: Colors.greenAccent);
+      case LibraryItemType.flashcards: return const Icon(Icons.style_outlined, color: Colors.orangeAccent);
     }
   }
 
@@ -391,11 +396,10 @@ class LibraryScreenState extends State<LibraryScreen>
           children: [
             Icon(Icons.school_outlined, size: 100, color: theme.iconTheme.color),
             const SizedBox(height: 24),
-            Text('No $typeName yet',
-                style: theme.textTheme.headlineMedium),
+            Text('No $typeName yet', style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
-              'Tap the ' '+' ' button to create your first set of study materials!',
+              'Tap the + button to create your first set of study materials!',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,
             ),
@@ -412,11 +416,9 @@ class LibraryScreenState extends State<LibraryScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off_outlined,
-                size: 100, color: theme.iconTheme.color),
+            Icon(Icons.search_off_outlined, size: 100, color: theme.iconTheme.color),
             const SizedBox(height: 24),
-            Text('No Results Found',
-                style: theme.textTheme.headlineMedium),
+            Text('No Results Found', style: theme.textTheme.headlineMedium),
             const SizedBox(height: 12),
             Text(
               'Your search for "$_searchQuery" did not match any content. Try a different search term.',
@@ -429,29 +431,39 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  void _showItemMenu(String userId, LibraryItem item, ThemeData theme) {
+  void _showCreateOptions(BuildContext context) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.cardColor,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Wrap(
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Wrap(
         children: [
           ListTile(
-            leading: Icon(Icons.edit_outlined, color: theme.iconTheme.color),
-            title: Text('Edit', style: theme.textTheme.bodyMedium),
+            leading: Icon(Icons.article_outlined, color: theme.iconTheme.color),
+            title: Text('Create Summary', style: theme.textTheme.bodyMedium),
             onTap: () {
-              Navigator.pop(context);
-              _editContent(userId, item);
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const SummaryScreen()));
             },
           ),
           ListTile(
-            leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-            title:
-                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            leading: Icon(Icons.quiz_outlined, color: theme.iconTheme.color),
+            title: Text('Create Quiz', style: theme.textTheme.bodyMedium),
             onTap: () {
-              Navigator.pop(context);
-              _deleteContent(userId, item);
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const QuizScreen()));
+            },
+          ),
+           ListTile(
+            leading: Icon(Icons.style_outlined, color: theme.iconTheme.color),
+            title: Text('Create Flashcards', style: theme.textTheme.bodyMedium),
+            onTap: () {
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const FlashcardsScreen()));
             },
           ),
         ],
@@ -459,119 +471,148 @@ class LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  Future<void> _navigateToContent(String userId, LibraryItem item) async {
+  void _showItemMenu(BuildContext context, String userId, LibraryItem item, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.cardColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Wrap(
+        children: [
+          ListTile(
+            leading: Icon(Icons.edit_outlined, color: theme.iconTheme.color),
+            title: Text('Edit', style: theme.textTheme.bodyMedium),
+            onTap: () {
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              _editContent(context, userId, item);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            title: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            onTap: () {
+              if (!mounted) return;
+              Navigator.pop(ctx);
+              _deleteContent(context, userId, item);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _navigateToContent(BuildContext context, String userId, LibraryItem item) async {
+    if (!mounted) return;
+
+    Widget? screen;
+    switch (item.type) {
+      case LibraryItemType.summary:
+        if (_isOfflineMode) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigation is disabled in offline mode.')));
+          return;
+        }
+        final content = await _firestoreService.getSpecificItem(userId, item);
+        if (!mounted) return;
+        if (content != null) {
+          screen = SummaryScreen(summary: content as Summary);
+        }
+        break;
+      case LibraryItemType.quiz:
+        final localQuiz = await _localDb.getQuiz(item.id);
+        if (!mounted) return;
+        if (localQuiz != null) {
+          screen = QuizScreen(quiz: localQuiz);
+        }
+        break;
+      case LibraryItemType.flashcards:
+         if (_isOfflineMode) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigation is disabled in offline mode.')));
+          return;
+        }
+        final content = await _firestoreService.getSpecificItem(userId, item);
+        if (!mounted) return;
+        if (content != null) {
+          screen = FlashcardsScreen(flashcardSet: content as FlashcardSet);
+        }
+        break;
+    }
+
+    if (!mounted) return;
+
+    if (screen != null) {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => screen!));
+    } else {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Could not load content.')));
+    }
+  }
+
+  Future<void> _editContent(BuildContext context, String userId, LibraryItem item) async {
+    if (!mounted) return;
+
     if (_isOfflineMode) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Navigation is disabled in offline mode.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Editing is disabled in offline mode.')));
       return;
     }
     
-    Widget screen;
-    switch (item.type) {
-      case LibraryItemType.summary:
-        final content = await _firestoreService.getSpecificItem(userId, item);
-        if (content == null || !mounted) return;
-        screen = SummaryScreen(summary: content as Summary);
-        break;
-      case LibraryItemType.quiz:
-        LocalQuiz? localQuiz = await _localDb.getQuiz(item.id);
-        if (localQuiz == null) {
-            final firestoreQuiz = await _firestoreService.getSpecificItem(userId, item) as Quiz?;
-            if (firestoreQuiz == null) return;
-            localQuiz = LocalQuiz(
-                id: firestoreQuiz.id,
-                userId: firestoreQuiz.userId,
-                title: firestoreQuiz.title,
-                questions: firestoreQuiz.questions.map((q) => 
-                    LocalQuizQuestion(
-                        question: q.question, 
-                        options: q.options, 
-                        correctAnswer: q.correctAnswer
-                    )).toList(), 
-                timestamp: firestoreQuiz.timestamp.toDate(),
-                scores: [],
-            );
-            await _localDb.saveQuiz(localQuiz);
-        }
-        screen = QuizScreen(quiz: localQuiz);
-        break;
-      case LibraryItemType.flashcards:
-        final content = await _firestoreService.getSpecificItem(userId, item);
-        if (content == null || !mounted) return;
-        screen = FlashcardsScreen(flashcardSet: content as FlashcardSet);
-        break;
-    }
-    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
-  }
-
-  Future<void> _editContent(String userId, LibraryItem item) async {
-    if (_isOfflineMode) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Editing is disabled in offline mode.')));
-      return;
-    }
     final content = await _firestoreService.getSpecificItem(userId, item);
-    if (content == null || !mounted) return;
+    if (!mounted || content == null) return;
 
-    EditableContent editableContent;
+    EditableContent? editableContent;
     switch (item.type) {
-      case LibraryItemType.summary:
+      case LibraryItemType.summary: 
         final summary = content as Summary;
-        editableContent = EditableContent.fromSummary(summary.id, summary.title,
-            summary.content, summary.tags, summary.timestamp);
+        editableContent = EditableContent.fromSummary(summary.id, summary.title, summary.content, summary.tags, summary.timestamp);
         break;
-      case LibraryItemType.quiz:
+      case LibraryItemType.quiz: 
         final quiz = content as Quiz;
-        editableContent = EditableContent.fromQuiz(
-            quiz.id, quiz.title, quiz.questions, quiz.timestamp);
+        editableContent = EditableContent.fromQuiz(quiz.id, quiz.title, quiz.questions, quiz.timestamp);
         break;
       case LibraryItemType.flashcards:
         final flashcardSet = content as FlashcardSet;
-        editableContent = EditableContent.fromFlashcardSet(
-            flashcardSet.id,
-            flashcardSet.title,
-            flashcardSet.flashcards,
-            flashcardSet.timestamp);
+        editableContent = EditableContent.fromFlashcardSet(flashcardSet.id, flashcardSet.title, flashcardSet.flashcards, flashcardSet.timestamp);
         break;
     }
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => EditContentScreen(content: editableContent)));
+    
+    if (!mounted) return;
+
+    Navigator.push(context, MaterialPageRoute(builder: (context) => EditContentScreen(content: editableContent!)));
   }
 
-  Future<void> _deleteContent(String userId, LibraryItem item) async {
+  Future<void> _deleteContent(BuildContext context, String userId, LibraryItem item) async {
+    if (!mounted) return;
     final theme = Theme.of(context);
-    if (_isOfflineMode) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Deletion is disabled in offline mode.')));
-      return;
-    }
     final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: theme.cardColor,
-            title: Text('Delete Content', style: theme.textTheme.headlineSmall),
-            content: Text('Are you sure you want to delete this item?', style: theme.textTheme.bodyMedium),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text('Cancel', style: TextStyle(color: theme.colorScheme.onSurface))),
-              TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Delete',
-                      style: TextStyle(color: Colors.redAccent))),
-            ],
-          ),
-        ) ??
-        false;
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        title: Text('Delete Content', style: theme.textTheme.headlineSmall),
+        content: Text('Are you sure you want to delete this item?', style: theme.textTheme.bodyMedium),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text('Cancel', style: TextStyle(color: theme.colorScheme.onSurface))),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete', style: TextStyle(color: Colors.redAccent))),
+        ],
+      ),
+    );
 
-    if (confirmed) {
-      await _firestoreService.deleteItem(userId, item);
-      await _localDb.deleteQuiz(item.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Item deleted')));
+    if (!mounted || confirmed == null || !confirmed) return;
+
+    try {
+      if (item.type == LibraryItemType.quiz) {
+        await _localDb.deleteQuiz(item.id);
+        if (mounted) Provider.of<QuizViewModel>(context, listen: false).refresh();
+      } else {
+          if (_isOfflineMode) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Deletion of cloud items is disabled in offline mode.')));
+            return;
+          }
+          await _firestoreService.deleteItem(userId, item);
+      }
+        if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item deleted')));
+      }
+    } catch (e) {
+        if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting item: $e')));
       }
     }
   }

@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:myapp/models/user_model.dart';
 import 'package:myapp/services/firestore_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth;
@@ -45,11 +44,8 @@ class AuthService {
           developer.log('New user signed in with Google: ${user.uid}');
           UserModel newUser = UserModel(
             uid: user.uid,
-            name: user.displayName ?? '',
+            displayName: user.displayName ?? '',
             email: user.email ?? '',
-            subscriptionStatus: 'Free',
-            dailyUsage: {},
-            lastReset: Timestamp.now(),
           );
           await _firestoreService.saveUserData(newUser);
         } else {
@@ -90,11 +86,8 @@ class AuthService {
       if (user != null) {
         UserModel newUser = UserModel(
           uid: user.uid,
-          name: fullName,
+          displayName: fullName,
           email: user.email ?? '',
-          subscriptionStatus: 'Free',
-          dailyUsage: {},
-          lastReset: Timestamp.now(),
         );
         await _firestoreService.saveUserData(newUser);
         developer.log('New user created from email sign up: ${user.uid}');

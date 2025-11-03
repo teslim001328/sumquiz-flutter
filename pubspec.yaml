@@ -47,6 +47,7 @@ dependencies:
   go_router: ^16.2.5
   confetti: ^0.8.0
   flutter_quill: ^11.4.2
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -58,3 +59,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/

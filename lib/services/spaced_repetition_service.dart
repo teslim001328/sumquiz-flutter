@@ -1,130 +1,125 @@
 import 'package:hive/hive.dart';
-import 'dart:math';
+import 'package:collection/collection.dart';
+import 'package:uuid/uuid.dart';
+
 import '../models/spaced_repetition.dart';
 import '../models/local_flashcard.dart';
-import 'dart:developer' as developer;
 
 class SpacedRepetitionService {
-  final Box<SpacedRepetitionItem> _srsBox;
+  final Box<SpacedRepetitionItem> _box;
+  final Uuid _uuid = const Uuid();
 
-  SpacedRepetitionService(this._srsBox);
+  SpacedRepetitionService(this._box);
 
-  Future<void> scheduleReview(String flashcardId) async {
-    final now = DateTime.now();
+  Future<void> scheduleReview(String flashcardId, String userId) async {
+    final now = DateTime.now().toUtc();
     final newItem = SpacedRepetitionItem(
-      id: flashcardId, // id is required
-      userId: '', // userId is required, you may need to pass this in
+      id: _uuid.v4(),
+      userId: userId,
       contentId: flashcardId,
       contentType: 'flashcard',
-      nextReviewDate: now, // nextReviewDate is required
+      nextReviewDate: now,
       lastReviewed: now,
       createdAt: now,
       updatedAt: now,
     );
-    await _srsBox.put(flashcardId, newItem);
+    await _box.put(newItem.id, newItem);
+  }
+
+  Future<void> updateReview(String itemId, bool answeredCorrectly) async {
+    final item = _box.get(itemId);
+    if (item == null) return;
+
+    final now = DateTime.now().toUtc();
+    int repetitionCount;
+    double easeFactor;
+    int interval;
+    int correctStreak;
+
+    if (answeredCorrectly) {
+      correctStreak = item.correctStreak + 1;
+      repetitionCount = item.repetitionCount + 1;
+      easeFactor = item.easeFactor + (0.1 - (5 - 4) * (0.08 + (5 - 4) * 0.02));
+      if (easeFactor < 1.3) easeFactor = 1.3;
+
+      if (repetitionCount == 1) {
+        interval = 1;
+      } else if (repetitionCount == 2) {
+        interval = 6;
+      } else {
+        interval = (item.interval * easeFactor).round();
+      }
+    } else {
+      correctStreak = 0;
+      repetitionCount = 0; // Reset repetition count
+      interval = 1; // Review again tomorrow
+      easeFactor = item.easeFactor; // E-factor does not change on incorrect answer
+    }
+
+    final updatedItem = SpacedRepetitionItem(
+      id: item.id,
+      userId: item.userId,
+      contentId: item.contentId,
+      contentType: item.contentType,
+      nextReviewDate: now.add(Duration(days: interval)),
+      lastReviewed: now,
+      createdAt: item.createdAt,
+      updatedAt: now,
+      interval: interval,
+      easeFactor: easeFactor,
+      repetitionCount: repetitionCount,
+      correctStreak: correctStreak,
+    );
+
+    await _box.put(item.id, updatedItem);
+  }
+
+  Future<List<String>> getDueFlashcardIds(String userId) async {
+    final now = DateTime.now().toUtc();
+    return _box.values
+        .where((item) =>
+            item.userId == userId &&
+            item.contentType == 'flashcard' &&
+            item.nextReviewDate.isBefore(now))
+        .map((item) => item.contentId)
+        .toList();
   }
 
   Future<List<LocalFlashcard>> getDueFlashcards(
-      List<LocalFlashcard> allFlashcards) async {
-    final dueItems = _srsBox.values.where((item) {
-      if (item.contentType != 'flashcard') return false;
-      final interval = _getInterval(item.repetitionCount);
-      final dueDate = item.lastReviewed.add(Duration(days: interval));
-      return DateTime.now().isAfter(dueDate);
-    }).toList();
+      String userId, List<LocalFlashcard> allFlashcards) async {
+    final dueItemIds = await getDueFlashcardIds(userId);
+    final dueItemIdsSet = dueItemIds.toSet();
 
-    final dueFlashcards = <LocalFlashcard>[];
-    for (final item in dueItems) {
-      try {
-        final flashcard =
-            allFlashcards.firstWhere((fc) => fc.id == item.contentId);
-        dueFlashcards.add(flashcard);
-      } catch (e) {
-        developer.log('Flashcard with id ${item.contentId} not found',
-            name: 'SpacedRepetitionService');
-      }
-    }
-    return dueFlashcards;
-  }
-
-  Future<void> updateReview(String flashcardId, bool answeredCorrectly) async {
-    final item = _srsBox.get(flashcardId);
-    if (item != null) {
-      final now = DateTime.now();
-      int newRepetitionCount;
-      int newCorrectStreak;
-
-      if (answeredCorrectly) {
-        newRepetitionCount = item.repetitionCount + 1;
-        newCorrectStreak = item.correctStreak + 1;
-      } else {
-        newRepetitionCount = 0; // Reset progress
-        newCorrectStreak = 0;
-      }
-
-      final updatedItem = SpacedRepetitionItem(
-        id: item.id,
-        userId: item.userId,
-        contentId: item.contentId,
-        contentType: item.contentType,
-        nextReviewDate:
-            now.add(Duration(days: _getInterval(newRepetitionCount))),
-        repetitionCount: newRepetitionCount,
-        correctStreak: newCorrectStreak,
-        lastReviewed: now,
-        createdAt: item.createdAt,
-        updatedAt: now,
-      );
-
-      await _srsBox.put(flashcardId, updatedItem);
-    }
-  }
-
-  int _getInterval(int repetitionCount) {
-    if (repetitionCount == 0) return 1;
-    if (repetitionCount == 1) return 3;
-    return (pow(2, repetitionCount) * 2).toInt();
+    return allFlashcards
+        .where((flashcard) => dueItemIdsSet.contains(flashcard.id))
+        .toList();
   }
 
   Future<Map<String, dynamic>> getStatistics(String userId) async {
-    final allItems =
-        _srsBox.values.where((item) => item.userId == userId).toList();
+    final now = DateTime.now().toUtc();
+    final startOfToday = DateTime.utc(now.year, now.month, now.day);
+    final endOfWeek = startOfToday.add(const Duration(days: 7));
 
-    if (allItems.isEmpty) {
-      return {
-        'totalReviews': 0,
-        'averageCorrectness': 0.0,
-        'masteryLevel': 0.0,
-        'reviewsOverTime': [],
-      };
-    }
+    final userItems = _box.values.where((item) => item.userId == userId).toList();
 
-    final totalReviews = allItems.length;
-    final correctReviews =
-        allItems.where((item) => item.correctStreak > 0).length;
-    final averageCorrectness =
-        totalReviews > 0 ? correctReviews / totalReviews : 0.0;
-    final totalCorrectStreaks =
-        allItems.fold<int>(0, (prev, item) => prev + item.correctStreak);
-    final masteryLevel =
-        totalReviews > 0 ? totalCorrectStreaks / totalReviews : 0.0;
+    final dueForReviewCount = userItems
+        .where((item) => item.nextReviewDate.isBefore(now))
+        .length;
 
-    // Group reviews by day
-    final reviewsOverTime = <DateTime, int>{};
-    for (final item in allItems) {
-      final date = DateTime(item.lastReviewed.year, item.lastReviewed.month,
-          item.lastReviewed.day);
-      reviewsOverTime[date] = (reviewsOverTime[date] ?? 0) + 1;
-    }
-
-    final sortedReviews = reviewsOverTime.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final upcomingReviews = userItems
+        .where((item) =>
+            item.nextReviewDate.isAfter(startOfToday) &&
+            item.nextReviewDate.isBefore(endOfWeek))
+        .groupListsBy((item) => DateTime.utc(
+            item.nextReviewDate.year, item.nextReviewDate.month, item.nextReviewDate.day))
+        .entries
+        .map((entry) => MapEntry(entry.key, entry.value.length))
+        .sortedBy<DateTime>((entry) => entry.key)
+        .toList();
 
     return {
-      'totalReviews': totalReviews,
-      'averageCorrectness': averageCorrectness,
-      'masteryLevel': masteryLevel,
-      'reviewsOverTime': sortedReviews,
+      'dueForReviewCount': dueForReviewCount,
+      'upcomingReviews': upcomingReviews,
     };
   }
 }

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:confetti/confetti.dart';
+import '../../services/local_database_service.dart';
 import '../../services/spaced_repetition_service.dart';
 import '../../models/local_flashcard.dart';
 import '../../models/spaced_repetition.dart';
@@ -18,6 +19,7 @@ class SpacedRepetitionScreen extends StatefulWidget {
 
 class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
   late SpacedRepetitionService _spacedRepetitionService;
+  late LocalDatabaseService _dbService;
   late ConfettiController _confettiController;
   List<LocalFlashcard> _dueFlashcards = [];
   int _currentIndex = 0;
@@ -52,6 +54,8 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
   Future<void> _initializeAndLoad() async {
     final box = Hive.box<SpacedRepetitionItem>('spaced_repetition');
     _spacedRepetitionService = SpacedRepetitionService(box);
+    _dbService = LocalDatabaseService();
+    await _dbService.init();
     await _loadDueFlashcards();
   }
 
@@ -65,7 +69,11 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
     try {
       final user = Provider.of<User?>(context, listen: false);
       if (user != null) {
-        final flashcards = await _spacedRepetitionService.getDueFlashcards([]);
+        final allFlashcardSets = await _dbService.getAllFlashcardSets(user.uid);
+        final allLocalFlashcards =
+            allFlashcardSets.expand((set) => set.flashcards).toList();
+        final flashcards = await _spacedRepetitionService.getDueFlashcards(
+            user.uid, allLocalFlashcards);
         if (!mounted) return;
 
         setState(() {
@@ -226,7 +234,7 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
               Expanded(
                 child: LinearProgressIndicator(
                   value: (_currentIndex + 1) / _dueFlashcards.length,
-                  backgroundColor: Colors.white.withOpacity(0.3),
+                  backgroundColor: Colors.white.withAlpha(77),
                   valueColor: const AlwaysStoppedAnimation<Color>(
                       Colors.lightGreenAccent),
                   minHeight: 8,
@@ -261,10 +269,10 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
     return GestureDetector(
       onTap: isQuestion ? _flipCard : null,
       child: Card(
-        color: Colors.black.withOpacity(0.4),
+        color: Colors.black.withAlpha(102),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
         elevation: 10,
-        shadowColor: Colors.black.withOpacity(0.5),
+        shadowColor: Colors.black.withAlpha(128),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -305,7 +313,7 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
       onPressed: _flipCard,
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(double.infinity, 60),
-        backgroundColor: Colors.white.withOpacity(0.9),
+        backgroundColor: Colors.white.withAlpha(230),
         foregroundColor: Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
@@ -348,7 +356,7 @@ class _SpacedRepetitionScreenState extends State<SpacedRepetitionScreen> {
         minimumSize: const Size(140, 60),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 5,
-        shadowColor: color.withOpacity(0.5),
+        shadowColor: color.withAlpha(128),
       ),
     );
   }

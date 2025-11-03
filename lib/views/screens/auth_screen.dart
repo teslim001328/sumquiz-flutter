@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:myapp/services/auth_service.dart';
+import 'package:provider/provider.dart';
 
 enum AuthMode { Login, SignUp }
 
 class AuthScreen extends StatefulWidget {
-  final AuthService authService;
-
-  const AuthScreen({super.key, required this.authService});
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -18,6 +17,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
   AuthMode _authMode = AuthMode.Login;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -35,18 +35,23 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate() || _isLoading) {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
+      final authService = Provider.of<AuthService>(context, listen: false);
       if (_authMode == AuthMode.Login) {
-        await widget.authService.signInWithEmailAndPassword(
+        await authService.signInWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
       } else {
-        await widget.authService.signUpWithEmailAndPassword(
+        await authService.signUpWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _fullNameController.text.trim(),
@@ -58,17 +63,71 @@ class _AuthScreenState extends State<AuthScreen> {
           SnackBar(content: Text('Authentication Failed: ${e.toString()}')),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _googleSignIn() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      await widget.authService.signInWithGoogle();
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signInWithGoogle();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Google Sign-In Failed: ${e.toString()}')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email to reset password.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.sendPasswordResetEmail(_emailController.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password reset email sent.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send reset email: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -140,7 +199,7 @@ class _AuthScreenState extends State<AuthScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: () {},
+              onPressed: _resetPassword,
               child: Text(
                 'Forgot Password?',
                 style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
@@ -271,14 +330,16 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        onPressed: _isLoading ? null : onPressed,
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -294,15 +355,17 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
-        onPressed: _googleSignIn,
-        child: Text(
-          'Continue with Google',
-          style: TextStyle(
-            color: theme.colorScheme.onSurface,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        onPressed: _isLoading ? null : _googleSignIn,
+        child: _isLoading
+            ? const CircularProgressIndicator()
+            : Text(
+                'Continue with Google',
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }

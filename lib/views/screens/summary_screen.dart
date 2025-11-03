@@ -12,7 +12,8 @@ import '../../models/summary_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/ai_service.dart';
-import '../widgets/upgrade_modal.dart';
+import '../../services/usage_service.dart';
+import '../widgets/upgrade_dialog.dart';
 import 'quiz_screen.dart';
 import '../../models/local_quiz.dart';
 import '../../models/local_quiz_question.dart';
@@ -82,7 +83,8 @@ class SummaryScreenState extends State<SummaryScreen> {
 
   void _generateSummary() async {
     final userModel = Provider.of<UserModel?>(context, listen: false);
-    if (userModel == null) {
+    final usageService = Provider.of<UsageService?>(context, listen: false);
+    if (userModel == null || usageService == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -91,11 +93,17 @@ class SummaryScreenState extends State<SummaryScreen> {
       return;
     }
 
-    final canGenerate =
-        await _firestoreService.canGenerate(userModel.uid, 'summaries');
-    if (!canGenerate) {
-      if (mounted) _showUpgradeDialog();
-      return;
+    if (!userModel.isPro) {
+      final canGenerate = await usageService.canPerformAction('summaries');
+      if (!canGenerate) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => const UpgradeDialog(featureName: 'summaries'),
+          );
+        }
+        return;
+      }
     }
 
     setState(() => _state = SummaryState.loading);
@@ -114,7 +122,9 @@ class SummaryScreenState extends State<SummaryScreen> {
           _errorMessage = summaryData['error'];
         });
       } else {
-        _firestoreService.incrementUsage(userModel.uid, 'summaries');
+        if (!userModel.isPro) {
+          await usageService.recordAction('summaries');
+        }
         setState(() {
           _summaryTitle = summaryData['title'] ?? 'Summary';
           _summaryContent = summaryData['content'] ?? '';
@@ -134,13 +144,6 @@ class SummaryScreenState extends State<SummaryScreen> {
         _errorMessage = "An unexpected error occurred. Please try again.";
       });
     }
-  }
-
-  void _showUpgradeDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => const UpgradeModal(),
-    );
   }
 
   void _retry() {

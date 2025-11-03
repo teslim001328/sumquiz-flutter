@@ -1,10 +1,10 @@
 import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/user_model.dart';
 import '../../services/local_database_service.dart';
 import '../../services/spaced_repetition_service.dart';
 import '../../services/firestore_service.dart';
@@ -20,27 +20,11 @@ class _ProgressScreenState extends State<ProgressScreen> {
   Future<Map<String, dynamic>>? _statsFuture;
 
   @override
-  void initState() {
-    super.initState();
-    final user = Provider.of<User?>(context, listen: false);
-    if (user != null) {
-      _statsFuture = _loadStats(user.uid);
-    }
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final user = Provider.of<User?>(context);
-    // If the user logs in or out, reload the stats.
-    if (_statsFuture == null && user != null) {
-      setState(() {
-        _statsFuture = _loadStats(user.uid);
-      });
-    } else if (user == null && _statsFuture != null) {
-      setState(() {
-        _statsFuture = null;
-      });
+    final user = Provider.of<UserModel?>(context);
+    if (user != null) {
+      _statsFuture = _loadStats(user.uid);
     }
   }
 
@@ -84,7 +68,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<User?>(context);
+    final user = Provider.of<UserModel?>(context);
     final theme = Theme.of(context);
 
     if (user == null) {
@@ -196,16 +180,22 @@ class _ProgressScreenState extends State<ProgressScreen> {
         Text('Top Metrics',
             style: theme.textTheme.headlineMedium),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
+        Row(
           children: [
-            _buildMetricChip(
-                theme, 'Summaries', (stats['summariesCount'] ?? 0).toString()),
-            _buildMetricChip(
-                theme, 'Quizzes', (stats['quizzesCount'] ?? 0).toString()),
-            _buildMetricChip(
-                theme, 'Flashcards', (stats['flashcardsCount'] ?? 0).toString()),
+            Expanded(
+              child: _buildMetricChip(
+                  theme, 'Summaries', (stats['summariesCount'] ?? 0).toString()),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildMetricChip(
+                  theme, 'Quizzes', (stats['quizzesCount'] ?? 0).toString()),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildMetricChip(
+                  theme, 'Flashcards', (stats['flashcardsCount'] ?? 0).toString()),
+            ),
           ],
         )
       ],
@@ -214,7 +204,6 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   Widget _buildMetricChip(ThemeData theme, String label, String value) {
     return Container(
-      width: 250, // Give a fixed width to each chip for a uniform look
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
       decoration: BoxDecoration(
         color: theme.cardColor,
@@ -250,7 +239,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           gradient: LinearGradient(
-            colors: [theme.scaffoldBackgroundColor.withOpacity(0.7), Colors.transparent],
+            colors: [theme.scaffoldBackgroundColor.withAlpha(178), Colors.transparent],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
           ),

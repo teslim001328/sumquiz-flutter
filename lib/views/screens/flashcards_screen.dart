@@ -2,18 +2,20 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flip_card/flip_card.dart';
+import 'package:myapp/services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../services/local_database_service.dart';
 import '../../services/spaced_repetition_service.dart';
 import '../../services/ai_service.dart';
-import '../../services/firestore_service.dart';
+import '../../services/usage_service.dart';
 import '../../models/user_model.dart';
 import '../../models/flashcard.dart';
 import '../../models/flashcard_set.dart';
 import '../../models/summary_model.dart';
-import '../widgets/upgrade_modal.dart';
+import '../widgets/upgrade_dialog.dart';
 
 class FlashcardsScreen extends StatefulWidget {
   final FlashcardSet? flashcardSet;
@@ -28,7 +30,7 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
   final TextEditingController _titleController = TextEditingController();
   final CardSwiperController _swiperController = CardSwiperController();
   final AIService _aiService = AIService();
-  final FirestoreService _firestoreService = FirestoreService();
+  final Uuid _uuid = const Uuid();
   late SpacedRepetitionService _srsService;
 
   bool _isLoading = false;
@@ -64,17 +66,24 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     }
 
     final userModel = Provider.of<UserModel?>(context, listen: false);
-    if (userModel == null) {
+    final usageService = Provider.of<UsageService?>(context, listen: false);
+    if (userModel == null || usageService == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('User not found.')));
       return;
     }
 
-    final canGenerate =
-        await _firestoreService.canGenerate(userModel.uid, 'flashcards');
-    if (!canGenerate) {
-      if (mounted) _showUpgradeDialog();
-      return;
+    if (!userModel.isPro) {
+      final canGenerate = await usageService.canPerformAction('flashcards');
+      if (!canGenerate) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => const UpgradeDialog(featureName: 'flashcards'),
+          );
+        }
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -92,10 +101,20 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       final cards = await _aiService.generateFlashcards(summary);
 
       if (cards.isNotEmpty) {
-        await _firestoreService.incrementUsage(userModel.uid, 'flashcards');
+        if (!userModel.isPro) {
+          await usageService.recordAction('flashcards');
+        }
+        // Assign unique IDs to each card
+        final cardsWithIds = cards
+            .map((card) => Flashcard(
+                id: _uuid.v4(),
+                question: card.question,
+                answer: card.answer))
+            .toList();
+
         if (mounted) {
           setState(() {
-            _flashcards = cards;
+            _flashcards = cardsWithIds;
             _isLoading = false;
           });
           developer.log('${cards.length} flashcards generated successfully.',
@@ -121,7 +140,10 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         if (e.toString().contains('quota')) {
-          _showUpgradeDialog();
+          showDialog(
+            context: context,
+            builder: (context) => const UpgradeDialog(featureName: 'flashcards'),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Error generating flashcards: $e')));
@@ -160,18 +182,25 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
         timestamp: Timestamp.now(),
       );
 
-      await _firestoreService.addFlashcardSet(userModel.uid, set);
+      // Save the set to Firestore
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      await firestoreService.addFlashcardSet(userModel.uid, set);
+
+      // Schedule each flashcard for review
+      for (final flashcard in _flashcards) {
+        await _srsService.scheduleReview(flashcard.id, userModel.uid);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Flashcard set saved successfully!'),
+            content: Text('Flashcard set saved and scheduled for review!'),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e, s) {
-      developer.log('Error saving flashcard set',
+      developer.log('Error saving flashcard set or scheduling reviews',
           name: 'flashcards.save', error: e, stackTrace: s);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -184,15 +213,9 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     }
   }
 
-  void _showUpgradeDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => const UpgradeModal(),
-    );
-  }
-
   void _handleFlashcardReview(int index, bool knewIt) {
-    final flashcardId = _flashcards[index].hashCode.toString();
+    // Now using the persistent ID
+    final flashcardId = _flashcards[index].id;
     _srsService.updateReview(flashcardId, knewIt);
     _swiperController.swipe(CardSwiperDirection.right);
   }

@@ -5,9 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../models/flashcard.dart';
 import '../../models/flashcard_set.dart';
-import '../../models/local_flashcard_set.dart';
 import '../../services/local_database_service.dart';
 import '../../services/spaced_repetition_service.dart';
+import '../../services/firestore_service.dart';
 import 'flashcards_screen.dart';
 
 class ReviewScreen extends StatefulWidget {
@@ -18,53 +18,64 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  late LocalDatabaseService _dbService;
   late SpacedRepetitionService _srsService;
+  late FirestoreService _firestoreService;
   List<Flashcard> _dueFlashcards = [];
   bool _isLoading = true;
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    // Defer context-dependent initialization
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeAndLoadDueCards();
-    });
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initializeAndLoadDueCards();
   }
 
   Future<void> _initializeAndLoadDueCards() async {
     if (!mounted) return;
 
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.currentUser?.uid;
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.currentUser?.uid;
 
-    if (userId == null) {
+      if (userId == null) {
+        setState(() {
+          _isLoading = false;
+          _error = "User not found. Please log in again.";
+        });
+        return;
+      }
+
+      final dbService = LocalDatabaseService();
+      await dbService.init();
+      _srsService = SpacedRepetitionService(dbService.getSpacedRepetitionBox());
+      _firestoreService = FirestoreService();
+
+      // 1. Get all flashcard sets from Firestore
+      final flashcardSets = await _firestoreService.streamFlashcardSets(userId).first;
+
+      // 2. Flatten into a single list of all flashcards
+      final allFlashcards = flashcardSets.expand((set) => set.flashcards).toList();
+
+      // 3. Get the IDs of due cards from the local spaced repetition service
+      final dueFlashcardIds = await _srsService.getDueFlashcardIds(userId);
+
+      // 4. Filter the main list to get the due Flashcard objects
+      final dueFlashcards = allFlashcards.where((card) => dueFlashcardIds.contains(card.id)).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _dueFlashcards = dueFlashcards;
+        _isLoading = false;
+      });
+
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = "User not found. Please log in again.";
+        _error = "An error occurred while loading your review cards. Please try again later. Error: $e";
       });
-      return;
     }
-
-    _dbService = LocalDatabaseService();
-    await _dbService.init();
-    _srsService = SpacedRepetitionService(_dbService.getSpacedRepetitionBox());
-
-    final List<LocalFlashcardSet> allFlashcardSets = await _dbService.getAllFlashcardSets(userId);
-    final allLocalFlashcards = allFlashcardSets.expand((set) => set.flashcards).toList();
-
-    final dueLocalFlashcards = await _srsService.getDueFlashcards(allLocalFlashcards);
-
-    if (!mounted) return;
-
-    setState(() {
-      _dueFlashcards = dueLocalFlashcards.map((localCard) => Flashcard(
-        question: localCard.question,
-        answer: localCard.answer,
-      )).toList();
-      _isLoading = false;
-    });
   }
 
   void _startReviewSession() {
@@ -88,6 +99,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
         builder: (context) => FlashcardsScreen(flashcardSet: reviewSet),
       ),
     ).then((_) {
+      // Refresh the due cards list when returning from a review session
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
       _initializeAndLoadDueCards();
     });
   }
@@ -151,6 +167,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _isLoading = true;
+                _error = null;
+              });
+              _initializeAndLoadDueCards();
+            },
+            child: const Text('Retry'),
+          )
         ],
       ),
     );

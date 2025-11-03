@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +17,8 @@ import 'package:myapp/views/screens/preferences_screen.dart';
 import 'package:myapp/views/screens/data_storage_screen.dart';
 import 'package:myapp/views/screens/subscription_screen.dart';
 import 'package:myapp/views/screens/privacy_about_screen.dart';
+import 'package:myapp/views/screens/splash_screen.dart';
+import 'package:myapp/views/screens/onboarding_screen.dart';
 
 // GoRouterRefreshStream class
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -35,16 +38,30 @@ class GoRouterRefreshStream extends ChangeNotifier {
 
 GoRouter createAppRouter(AuthService authService) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash', // Set initial location to splash
     refreshListenable: GoRouterRefreshStream(authService.authStateChanges),
     redirect: (context, state) {
       final user = authService.currentUser;
       final loggingIn = state.matchedLocation == '/auth';
+      final isSplash = state.matchedLocation == '/splash';
+      final isOnboarding = state.matchedLocation == '/onboarding';
+
+      // Allow onboarding screen to be shown
+      if (isOnboarding) {
+        return null;
+      }
+
+      // If on splash, don't redirect yet. The splash screen will handle it.
+      if (isSplash) {
+        return null;
+      }
 
       if (user == null) {
+        // If not logged in and not on auth screen, redirect to auth
         return loggingIn ? null : '/auth';
       }
 
+      // If logged in and on auth screen, redirect to home
       if (loggingIn) {
         return '/';
       }
@@ -53,12 +70,20 @@ GoRouter createAppRouter(AuthService authService) {
     },
     routes: [
       GoRoute(
+        path: '/onboarding', // Add onboarding route
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/splash', // Add splash route
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
         path: '/',
         builder: (context, state) => const MainScreen(),
       ),
       GoRoute(
         path: '/auth',
-        builder: (context, state) => AuthScreen(authService: authService),
+        builder: (context, state) => const AuthScreen(),
       ),
       GoRoute(
         path: '/account',
@@ -106,8 +131,19 @@ GoRouter createAppRouter(AuthService authService) {
       ),
       GoRoute(
         path: '/edit-content',
-        builder: (context, state) =>
-            EditContentScreen(content: state.extra! as EditableContent),
+        builder: (context, state) {
+          if (state.extra is EditableContent) {
+            return EditContentScreen(content: state.extra as EditableContent);
+          } else {
+            // Handle the case where the extra data is not of the expected type
+            // For example, navigate to an error screen or back to the previous screen
+            return const Scaffold(
+              body: Center(
+                child: Text('Error: Invalid content data'),
+              ),
+            );
+          }
+        },
       ),
     ],
   );

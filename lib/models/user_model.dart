@@ -2,40 +2,52 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
   final String uid;
-  String name;
-  String email;
-  String subscriptionStatus;
-  Map<String, int> dailyUsage;
-  Timestamp lastReset;
+  final String email;
+  final String displayName;
+  final bool isPro;
+  final DateTime? subscriptionExpiry;
 
   UserModel({
     required this.uid,
-    required this.name,
     required this.email,
-    required this.subscriptionStatus,
-    required this.dailyUsage,
-    required this.lastReset,
+    required this.displayName,
+    this.isPro = false,
+    this.subscriptionExpiry,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
       uid: doc.id,
-      name: data['name'] ?? '',
       email: data['email'] ?? '',
-      subscriptionStatus: data['subscriptionStatus'] ?? 'Free',
-      dailyUsage: Map<String, int>.from(data['dailyUsage'] ?? {}),
-      lastReset: data['lastReset'] ?? Timestamp.now(),
+      displayName: data['displayName'] ?? '',
+      isPro: data['isPro'] ?? false,
+      subscriptionExpiry: (data['subscriptionExpiry'] as Timestamp?)?.toDate(),
     );
   }
 
   Map<String, dynamic> toFirestore() {
     return {
-      'name': name,
       'email': email,
-      'subscriptionStatus': subscriptionStatus,
-      'dailyUsage': dailyUsage,
-      'lastReset': lastReset,
+      'displayName': displayName,
+      'isPro': isPro,
+      if (subscriptionExpiry != null) 'subscriptionExpiry': Timestamp.fromDate(subscriptionExpiry!),
     };
+  }
+
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? displayName,
+    bool? isPro,
+    DateTime? subscriptionExpiry,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      isPro: isPro ?? this.isPro,
+      subscriptionExpiry: subscriptionExpiry ?? this.subscriptionExpiry,
+    );
   }
 }

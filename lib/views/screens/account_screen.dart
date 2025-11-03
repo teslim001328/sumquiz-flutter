@@ -26,13 +26,13 @@ class AccountScreen extends StatelessWidget {
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: theme.iconTheme.color),
-          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios, color: theme.colorScheme.onSurface),
+          onPressed: () => GoRouter.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings, color: theme.iconTheme.color),
-            onPressed: () => context.go('/settings'),
+            icon: Icon(Icons.settings, color: theme.colorScheme.onSurface),
+            onPressed: () => context.go('/account/settings'),
           ),
         ],
       ),
@@ -46,13 +46,18 @@ class AccountScreen extends StatelessWidget {
                 if (user != null)
                   Column(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 50,
-                        child: Icon(Icons.person, size: 50),
+                        backgroundColor: theme.colorScheme.primary,
+                        child: Icon(
+                          Icons.person,
+                          size: 50,
+                          color: theme.colorScheme.onPrimary,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        user.name,
+                        user.displayName,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -69,12 +74,14 @@ class AccountScreen extends StatelessWidget {
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
-                      authService.sendPasswordResetEmail(user!.email);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Password reset email sent.'),
-                        ),
-                      );
+                      if (user?.email != null) {
+                        authService.sendPasswordResetEmail(user!.email);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Password reset email sent.'),
+                          ),
+                        );
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: theme.colorScheme.onSurface,
@@ -93,8 +100,8 @@ class AccountScreen extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => authService.signOut(),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: theme.colorScheme.onSurface,
-                      side: BorderSide(color: theme.colorScheme.onSurface),
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
