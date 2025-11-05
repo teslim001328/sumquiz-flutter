@@ -16,6 +16,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
+  final _referralCodeController = TextEditingController(); // New controller
   AuthMode _authMode = AuthMode.Login;
   bool _isLoading = false;
 
@@ -24,6 +25,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _fullNameController.dispose();
+    _referralCodeController.dispose(); // Dispose the new controller
     super.dispose();
   }
 
@@ -51,10 +53,12 @@ class _AuthScreenState extends State<AuthScreen> {
           _passwordController.text.trim(),
         );
       } else {
+        // Pass the referral code to the sign-up method
         await authService.signUpWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _fullNameController.text.trim(),
+          _referralCodeController.text.trim(), // Pass the code
         );
       }
     } catch (e) {
@@ -262,6 +266,13 @@ class _AuthScreenState extends State<AuthScreen> {
               }
               return null;
             },
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            theme: theme,
+            controller: _referralCodeController,
+            labelText: 'Referral Code (Optional)',
+            validator: null, // This field is optional
           ),
           const SizedBox(height: 32),
           _buildAuthButton('Sign Up', _submit, theme),

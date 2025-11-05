@@ -325,18 +325,7 @@ class _QuizScreenState extends State<QuizScreen> {
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 800),
-            child: Stack(
-              children: [
-                _buildContent(theme),
-                if (_isLoading)
-                  Container(
-                    color: theme.scaffoldBackgroundColor.withAlpha(178),
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: theme.colorScheme.onSurface)),
-                  ),
-              ],
-            ),
+            child: _buildContent(theme),
           ),
         ));
   }
@@ -401,17 +390,30 @@ class _QuizScreenState extends State<QuizScreen> {
             padding: const EdgeInsets.symmetric(vertical: 24.0),
             child: SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _generateQuiz,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _generateQuiz,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Generate Quiz',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                icon: _isLoading
+                    ? Container(
+                        width: 24,
+                        height: 24,
+                        padding: const EdgeInsets.all(2.0),
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : const Icon(Icons.psychology_alt_outlined),
+                label: Text(
+                  _isLoading ? 'Generating Quiz...' : 'Generate Quiz',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ),

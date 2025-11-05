@@ -1,16 +1,13 @@
-
 import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:myapp/services/referral_service.dart';
 import 'package:rxdart/rxdart.dart';
 
 // Enum for the state of the purchase process
 enum PurchaseState { idle, purchasing, success, error, restored, canceled }
 
-// NEW: A class to hold the purchase result, including an error message
 class PurchaseResult {
   final PurchaseState state;
   final String? errorMessage;
@@ -23,7 +20,6 @@ class SubscriptionService {
   final InAppPurchase _inAppPurchase = InAppPurchase.instance;
   late StreamSubscription<List<PurchaseDetails>> _subscription;
 
-  // NEW: StreamController to broadcast the PurchaseResult to the UI
   final _purchaseResultController =
       BehaviorSubject<PurchaseResult>.seeded(PurchaseResult(PurchaseState.idle));
   Stream<PurchaseResult> get purchaseResultStream =>
@@ -76,9 +72,6 @@ class SubscriptionService {
               ? PurchaseState.success
               : PurchaseState.restored);
           break;
-        default:
-          newResult = PurchaseResult(PurchaseState.idle);
-          break;
       }
 
       _purchaseResultController.add(newResult);
@@ -91,7 +84,7 @@ class SubscriptionService {
 
   Future<void> _verifyAndFulfillPurchase(
       PurchaseDetails purchaseDetails, String uid) async {
-    const bool isValid = true;
+    const bool isValid = true; // Placeholder for server-side validation
 
     if (!isValid) {
       return;
@@ -116,7 +109,7 @@ class SubscriptionService {
         userRef,
         {
           'isPro': true,
-          'subscriptionExpiry':
+          'proSubscriptionExpires':
               expiryDate != null ? Timestamp.fromDate(expiryDate) : null,
           'purchaseId': purchaseDetails.purchaseID,
           'productId': purchaseDetails.productID,
@@ -125,49 +118,6 @@ class SubscriptionService {
         SetOptions(merge: true));
 
     await batch.commit();
-
-    if (purchaseDetails.status == PurchaseStatus.purchased) {
-      final referralService = ReferralService(uid);
-      try {
-        await referralService.grantReferrerReward(uid);
-      } catch (e) {
-        developer.log('Error granting referral reward.',
-            name: 'com.myapp.SubscriptionService', error: e);
-      }
-    }
-  }
-
-  Future<bool> isProUser(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (!doc.exists) return false;
-
-    final data = doc.data()!;
-    if (data['isPro'] != true) return false;
-
-    if (data.containsKey('subscriptionExpiry') &&
-        data['subscriptionExpiry'] != null) {
-      final expiry = (data['subscriptionExpiry'] as Timestamp).toDate();
-      return expiry.isAfter(DateTime.now());
-    }
-
-    return true; // Lifetime
-  }
-
-  Stream<bool> watchProStatus(String uid) {
-    return _firestore.collection('users').doc(uid).snapshots().map((snapshot) {
-      if (!snapshot.exists ||
-          !snapshot.data()!.containsKey('isPro') ||
-          snapshot.data()!['isPro'] != true) {
-        return false;
-      }
-      final data = snapshot.data()!;
-      if (data.containsKey('subscriptionExpiry') &&
-          data['subscriptionExpiry'] != null) {
-        final expiry = (data['subscriptionExpiry'] as Timestamp).toDate();
-        return expiry.isAfter(DateTime.now());
-      }
-      return true;
-    });
   }
 
   Future<void> purchasePlan(String planId) async {

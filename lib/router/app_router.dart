@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +18,7 @@ import 'package:myapp/views/screens/subscription_screen.dart';
 import 'package:myapp/views/screens/privacy_about_screen.dart';
 import 'package:myapp/views/screens/splash_screen.dart';
 import 'package:myapp/views/screens/onboarding_screen.dart';
+import 'package:myapp/views/screens/referral_screen.dart';
 
 // GoRouterRefreshStream class
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -70,11 +70,11 @@ GoRouter createAppRouter(AuthService authService) {
     },
     routes: [
       GoRoute(
-        path: '/onboarding', // Add onboarding route
+        path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
-        path: '/splash', // Add splash route
+        path: '/splash',
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
@@ -86,30 +86,32 @@ GoRouter createAppRouter(AuthService authService) {
         builder: (context, state) => const AuthScreen(),
       ),
       GoRoute(
-        path: '/account',
-        builder: (context, state) => const AccountScreen(),
+        path: '/referral',
+        builder: (context, state) => const ReferralScreen(),
+      ),
+      GoRoute(
+        path: '/subscription',
+        builder: (context, state) => const SubscriptionScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
         routes: [
           GoRoute(
-            path: 'settings',
-            builder: (context, state) => const SettingsScreen(),
-            routes: [
-              GoRoute(
-                path: 'preferences',
-                builder: (context, state) => const PreferencesScreen(),
-              ),
-              GoRoute(
-                path: 'data-storage',
-                builder: (context, state) => const DataStorageScreen(),
-              ),
-              GoRoute(
-                path: 'subscription',
-                builder: (context, state) => const SubscriptionScreen(),
-              ),
-              GoRoute(
-                path: 'privacy-about',
-                builder: (context, state) => const PrivacyAboutScreen(),
-              ),
-            ],
+            path: 'account',
+            builder: (context, state) => const AccountScreen(),
+          ),
+          GoRoute(
+            path: 'preferences',
+            builder: (context, state) => const PreferencesScreen(),
+          ),
+          GoRoute(
+            path: 'data-storage',
+            builder: (context, state) => const DataStorageScreen(),
+          ),
+          GoRoute(
+            path: 'privacy-about',
+            builder: (context, state) => const PrivacyAboutScreen(),
           ),
         ],
       ),

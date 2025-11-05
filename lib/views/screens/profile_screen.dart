@@ -1,211 +1,134 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
-import '../../view_models/quiz_view_model.dart';
+import '../../services/auth_service.dart';
+import '../widgets/pro_status_widget.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Listen for changes in QuizViewModel and rebuild the widget
-    Provider.of<QuizViewModel>(context, listen: false).addListener(() {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final user = Provider.of<UserModel?>(context);
-    final quizViewModel = Provider.of<QuizViewModel>(context);
+    final user = context.watch<UserModel?>();
+    final authService = context.read<AuthService>();
     final theme = Theme.of(context);
 
     if (user == null) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: theme.colorScheme.primary),
-        ),
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // Use theme color
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        title: const Text('Profile'),
+        centerTitle: true,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
-        title: Text(
-          'Profile',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Column(
+          children: <Widget>[
+            _buildHeader(context, user),
+            const SizedBox(height: 30),
+            const ProStatusWidget(), // GOOD: Widget is self-contained and reusable
+            const SizedBox(height: 20),
+            _buildMenuList(context),
+            const SizedBox(height: 30),
+            _buildSignOutButton(context, authService),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 45,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+          child: Text(
+            user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : '?',
+            style: theme.textTheme.headlineLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: theme.colorScheme.onSurface), // Use theme color
-            onPressed: () => context.go('/account/settings'), // Corrected navigation
-            tooltip: 'Settings',
+        const SizedBox(height: 15),
+        Text(
+          user.displayName,
+          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          user.email,
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuList(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Theme.of(context).cardColor,
+      child: Column(
+        children: [
+          _buildMenuTile(
+            context,
+            icon: Icons.person_outline,
+            title: 'Account Settings',
+            onTap: () => context.go('/settings/account'),
+          ),
+          _buildMenuTile(
+            context,
+            icon: Icons.card_giftcard_outlined,
+            title: 'Refer a Friend',
+            onTap: () => context.go('/referral'),
+          ),
+          _buildMenuTile(
+            context,
+            icon: Icons.settings_outlined,
+            title: 'App Settings',
+            onTap: () => context.go('/settings'),
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20),
-                _buildProfileAvatar(context, user),
-                const SizedBox(height: 20),
-                Text(
-                  user.displayName,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  user.email,
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                _buildSubscriptionChip(context, user),
-                const SizedBox(height: 40),
-                _buildStatsSection(context, quizViewModel),
-                const SizedBox(height: 40),
-                if (!user.isPro) ...[
-                  _buildUpgradeButton(context),
-                  const SizedBox(height: 24),
-                ],
-                _buildLogOutButton(context, authService),
-                const SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 
-  Widget _buildProfileAvatar(BuildContext context, UserModel user) {
+  Widget _buildMenuTile(BuildContext context, {required IconData icon, required String title, required VoidCallback onTap}) {
     final theme = Theme.of(context);
-    return CircleAvatar(
-      radius: 50,
-      backgroundColor: theme.colorScheme.primaryContainer, // Use theme color
-      child: Text(
-        user.displayName.isNotEmpty ? user.displayName[0].toUpperCase() : 'U',
-        style: GoogleFonts.poppins(
-          fontSize: 40,
-          fontWeight: FontWeight.bold,
-          color: theme.colorScheme.onPrimaryContainer, // Use theme color
-        ),
-      ),
+    return ListTile(
+      leading: Icon(icon, color: theme.colorScheme.secondary),
+      title: Text(title, style: theme.textTheme.titleMedium),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
     );
   }
 
-  Widget _buildSubscriptionChip(BuildContext context, UserModel user) {
-    final theme = Theme.of(context);
-    bool isPro = user.isPro;
-    return Chip(
-      label: Text(
-        isPro ? 'Pro User' : 'Free Plan',
-        style: GoogleFonts.poppins(
-          fontWeight: FontWeight.w500,
-          color: isPro ? theme.colorScheme.onPrimary : theme.colorScheme.onSecondaryContainer,
-        ),
-      ),
-      backgroundColor: isPro ? theme.colorScheme.primary : theme.colorScheme.secondaryContainer,
-      avatar: isPro ? Icon(Icons.star, color: theme.colorScheme.onPrimary, size: 18) : null,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    );
-  }
-
-  Widget _buildStatsSection(BuildContext context, QuizViewModel quizViewModel) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _buildStatCard(context, 'Quizzes', quizViewModel.quizzes.length.toString()),
-        _buildStatCard(context, 'Avg Score', '${quizViewModel.averageScore.toStringAsFixed(1)}%'),
-        _buildStatCard(context, 'Best Score', '${quizViewModel.bestScore.toStringAsFixed(1)}%'),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(BuildContext context, String label, String value) {
-    final theme = Theme.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUpgradeButton(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget _buildSignOutButton(BuildContext context, AuthService authService) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: TextButton.icon(
+        icon: const Icon(Icons.logout, color: Colors.red),
+        label: const Text('Sign Out', style: TextStyle(color: Colors.red)),
         onPressed: () {
-          // Navigate to upgrade/pricing page or show upgrade dialog
-          // You can implement this based on your app's structure
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Upgrade feature coming soon!'),
-            ),
-          );
+          authService.signOut();
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary, // Use theme color
-          foregroundColor: theme.colorScheme.onPrimary, // Use theme color
-          padding: const EdgeInsets.symmetric(vertical: 16),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: Colors.red, width: 0.5),
           ),
-        ),
-        child: Text(
-          'Upgrade to Pro',
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogOutButton(BuildContext context, AuthService authService) {
-    final theme = Theme.of(context);
-    return TextButton(
-      onPressed: () async {
-        await authService.signOut();
-      },
-      child: Text(
-        'Log Out',
-        style: GoogleFonts.poppins(
-          color: theme.colorScheme.error, // Use theme color
-          fontWeight: FontWeight.w500,
         ),
       ),
     );

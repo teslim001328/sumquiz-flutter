@@ -252,9 +252,9 @@ class _EditContentScreenState extends State<EditContentScreen> {
     );
 
     return QuillEditor(
-      controller: _quillController,
       focusNode: _focusNode,
       scrollController: _scrollController,
+      controller: _quillController,
       config: editorConfig,
     );
   }
@@ -287,7 +287,7 @@ class _EditContentScreenState extends State<EditContentScreen> {
         base: QuillToolbarBaseButtonOptions(
           iconTheme: QuillIconTheme(
             iconButtonSelectedData: IconButtonData(color: Color(0xFF6C63FF)),
-            iconButtonUnselectedData: IconButtonData(color: Colors.white70, disabledColor: Colors.white38),
+            iconButtonUnselectedData: IconButtonData(color: Colors.white70),
           ),
         ),
       ),

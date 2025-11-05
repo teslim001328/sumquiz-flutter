@@ -11,7 +11,6 @@ import 'firebase_options.dart';
 import 'package:myapp/services/ai_service.dart';
 import 'package:myapp/services/firestore_service.dart';
 import 'package:myapp/view_models/quiz_view_model.dart';
-import 'package:myapp/services/upgrade_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:myapp/router/app_router.dart';
 import 'package:myapp/providers/navigation_provider.dart';
@@ -20,6 +19,8 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:myapp/services/subscription_service.dart';
 import 'package:myapp/services/usage_service.dart';
 import 'package:myapp/services/referral_service.dart';
+import 'package:myapp/services/notification_service.dart';
+import 'package:myapp/view_models/referral_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +28,9 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await LocalDatabaseService().init();
+  
+  final notificationService = NotificationService();
+  await notificationService.initialize();
 
   if (!kIsWeb) {
     await FirebaseAppCheck.instance.activate(
@@ -35,47 +39,16 @@ void main() async {
     );
   }
 
-  // Instantiate AuthService before runApp
   final authService = AuthService(FirebaseAuth.instance);
 
-  runApp(MyApp(authService: authService));
+  runApp(MyApp(authService: authService, notificationService: notificationService));
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   final AuthService authService;
+  final NotificationService notificationService;
 
-  const MyApp({super.key, required this.authService});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  SubscriptionService? _subscriptionService;
-
-  @override
-  void initState() {
-    super.initState();
-    // Listen to auth state changes and initialize SubscriptionService
-    widget.authService.user.listen((user) {
-      if (user != null) {
-        if (_subscriptionService == null) {
-          _subscriptionService = SubscriptionService();
-          _subscriptionService!.initialize(user.uid);
-        }
-      } else {
-        // Clean up when user logs out
-        _subscriptionService?.dispose();
-        _subscriptionService = null;
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _subscriptionService?.dispose();
-    super.dispose();
-  }
+  const MyApp({super.key, required this.authService, required this.notificationService});
 
   @override
   Widget build(BuildContext context) {
@@ -83,17 +56,15 @@ class _MyAppState extends State<MyApp> {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
-        // Use Provider.value to expose the pre-instantiated AuthService
-        Provider<AuthService>.value(value: widget.authService),
+        Provider<AuthService>.value(value: authService),
+        Provider<NotificationService>.value(value: notificationService),
         Provider<AIService>(create: (_) => AIService()),
-        Provider<UpgradeService>(create: (_) => UpgradeService()),
         Provider<FirestoreService>(create: (_) => FirestoreService()),
         Provider<LocalDatabaseService>(create: (_) => LocalDatabaseService()),
         ProxyProvider<AuthService, SubscriptionService?>(
           update: (context, authService, previous) {
             final user = authService.currentUser;
             if (user != null) {
-              // Return existing service or create new one
               if (previous != null) {
                 return previous;
               }
@@ -101,7 +72,6 @@ class _MyAppState extends State<MyApp> {
               service.initialize(user.uid);
               return service;
             }
-            // Dispose previous service when user logs out
             previous?.dispose();
             return null;
           },
@@ -116,13 +86,9 @@ class _MyAppState extends State<MyApp> {
             return null;
           },
         ),
-        ProxyProvider<AuthService, ReferralService?>(
+        ProxyProvider<AuthService, ReferralService>(
           update: (context, authService, previous) {
-            final user = authService.currentUser;
-            if (user != null) {
-              return ReferralService(user.uid);
-            }
-            return null;
+            return ReferralService();
           },
         ),
         StreamProvider<UserModel?>(
@@ -135,17 +101,23 @@ class _MyAppState extends State<MyApp> {
             context.read<AuthService>(),
           ),
           update: (_, authService, previous) {
-            // Reuse existing QuizViewModel if available
             if (previous != null) {
               return previous;
             }
             return QuizViewModel(LocalDatabaseService(), authService);
           },
         ),
+        ChangeNotifierProxyProvider<AuthService, ReferralViewModel>(
+          create: (context) => ReferralViewModel(context.read<ReferralService>(), context.read<AuthService>()),
+          update: (context, authService, previous) {
+            previous?.update(context.read<ReferralService>(), authService);
+            return previous!;
+          },
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
-          final router = createAppRouter(widget.authService);
+          final router = createAppRouter(authService);
           return MaterialApp.router(
             title: 'SumQuiz',
             theme: themeProvider.getTheme(),

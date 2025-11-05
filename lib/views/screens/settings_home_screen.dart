@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:myapp/services/notification_service.dart';
 import 'account_screen.dart';
 import 'preferences_screen.dart';
 import 'data_storage_screen.dart';
@@ -35,6 +37,8 @@ class SettingsHomeScreen extends StatelessWidget {
             _buildSettingsCard(context, 'Subscription', 'View your plan & upgrade', const SubscriptionScreen()),
             const SizedBox(height: 16),
             _buildSettingsCard(context, 'Privacy & About', 'Legal, support & app info', const PrivacyAboutScreen()),
+            const SizedBox(height: 16),
+            _buildNotificationCard(context), // New notification card
           ],
         ),
       ),
@@ -53,6 +57,28 @@ class SettingsHomeScreen extends StatelessWidget {
         subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
         trailing: Icon(Icons.arrow_forward_ios, color: Theme.of(context).iconTheme.color, size: 16),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => screen)),
+      ),
+    );
+  }
+
+  // New widget for the notification card
+  Widget _buildNotificationCard(BuildContext context) {
+    final notificationService = Provider.of<NotificationService>(context, listen: false);
+    return Card(
+      color: Theme.of(context).cardColor,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text('Notifications', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        subtitle: const Text('Test your notifications'),
+        trailing: ElevatedButton(
+          child: const Text('Send Test'),
+          onPressed: () {
+            notificationService.showTestNotification();
+          },
+        ),
       ),
     );
   }

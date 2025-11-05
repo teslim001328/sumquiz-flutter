@@ -1,67 +1,57 @@
-
 # SumQuiz Blueprint
 
 ## Overview
 
-SumQuiz is a mobile application that helps users study and learn by creating summaries, quizzes, and flashcards from text. The app uses a freemium model, with a free tier that has limitations on the number of items that can be created, and a "Pro" tier with unlimited access.
+SumQuiz is a mobile application that allows users to create, study, and share quizzes and flashcards. The app is built with Flutter and uses Firebase for backend services.
 
-## Features
+## Implemented Features
 
 ### Core Features
 
-*   **Summaries:** Users can create summaries from text.
-*   **Quizzes:** Users can create quizzes from text, either from scratch or from a summary. Quizzes can be saved in-progress and scores are saved upon completion.
-*   **Flashcards:** Users can create flashcards from text.
-*   **Spaced Repetition:** The app uses a spaced repetition algorithm to help users review flashcards at the optimal time.
-*   **Progress Tracking:** The app tracks the user's progress, including the number of items created, the number of items due for review, and upcoming reviews.
+*   **User Authentication**: Users can sign up and sign in using email and password or Google Sign-In.
+*   **Quiz Creation**: Users can create quizzes with multiple-choice questions.
+*   **Flashcard Creation**: Users can create flashcard sets.
+*   **Content Library**: Users can browse and manage their created content.
+*   **AI-Powered Tools**: The app integrates with AI services to provide features like quiz generation from text.
+*   **Spaced Repetition**: The app includes a spaced repetition system to help users study more effectively.
+*   **Progress Tracking**: Users can track their progress and performance on quizzes.
+*   **Referral System**: Users can refer friends to earn rewards.
+*   **Subscription Model**: The app offers a "Pro" subscription that unlocks additional features.
 
-### Pro Features
+### Technical Details
 
-*   **Unlimited Content:** Pro users can create an unlimited number of summaries, quizzes, and flashcards.
-*   **Advanced Progress Tracking:** Pro users have access to advanced progress tracking features, such as accuracy trends, performance by topic, and longer-term progress charts.
+*   **State Management**: The app uses `provider` for state management.
+*   **Routing**: The app uses `go_router` for navigation.
+*   **Local Storage**: The app uses `hive` for local data persistence.
+*   **Backend**: The app uses Firebase for authentication, Firestore, and Cloud Functions.
+*   **In-App Purchases**: The app uses the `in_app_purchase` package to manage subscriptions.
 
-## Current Implementation
+### Profile Screen Revamp
 
-### Library Screen & Data Flow
+*   **Redesigned UI**: The profile screen has been completely redesigned with a clean, modern, and intuitive list-based layout.
+*   **Centralized Header**: A new header displays the user's avatar, name, and email in a clear and organized manner.
+*   **Integrated Pro Status**: The `ProStatusWidget` is now used to display the user's subscription status. Tapping this widget takes the user to the subscription page, consolidating the call-to-action.
+*   **Navigation Menu**: A new menu provides quick access to:
+    *   Account Settings
+    *   Refer a Friend
+    *   App Settings
+*   **Improved Sign-Out**: A more prominent and user-friendly sign-out button is located at the bottom of the screen.
 
-The library screen has been completely fixed. It now correctly sources its quiz data from the `QuizViewModel`, which in turn reads from the local database. This ensures that any quiz saved via the `quiz_screen.dart`—whether in-progress or completed—appears instantly and reliably in the library's "Quizzes" and "All" tabs.
+### Referral Screen Revamp
 
-### Quiz Generation
+*   **Engaging Header**: A new, visually appealing header with an icon and a clear title has been added.
+*   **Interactive Referral Code**: A dedicated section for the referral code allows users to easily copy and share it.
+*   **Clearer Instructions**: The "How it Works" section has been redesigned with more distinct and easy-to-read steps, each with its own icon.
+*   **Modern Styling**: The screen now has a more polished and modern look and feel with improved spacing, typography, and iconography.
 
-The quiz generation logic has been corrected. The `AIService` now features a dedicated `generateQuizFromText` method. The `quiz_screen.dart` has been updated to call this method, ensuring that quizzes generated from the quiz creation form use the provided raw text, not a summary. Additionally, generating a quiz from a summary now correctly passes the summary's content to the quiz screen, which then automatically generates the quiz.
+### Subscription Screen Revamp
 
-### Quiz Screen & Data Flow
+*   **Compelling Header**: A new header with a gradient background, a prominent icon, and a strong headline has been added to capture user attention.
+*   **Redesigned Plan Cards**: The plan cards have been redesigned to be more visually appealing and easier to compare, with a clear highlight for the "Best Value" option.
+*   **Improved Feature List**: The feature list is now more scannable and engaging, using icons to highlight each benefit.
+*   **Enhanced Call-to-Action**: The "Upgrade to Pro" button is larger, more prominent, and more visually appealing.
+*   **Restore Purchases Link**: A "Restore Purchases" link has been added, which is a standard and necessary feature for any app with in-app purchases.
 
-The quiz saving and data flow has been completely fixed and is now reliable. 
+## Current Task: Fix Reactive "Pro" Status UI
 
-*   **In-Progress Saving:** A save icon in the app bar allows users to save a quiz while it's in progress.
-*   **Reliable Final Score Saving:** The final score is correctly appended to the quiz's history upon completion.
-*   **Immediate UI Updates:** The core issue has been resolved by adding a call to `quizViewModel.refresh()` immediately after any save operation (`_saveInProgress` and `_saveFinalScoreAndExit`). This forces the `QuizViewModel` to reload its data from the local database and notify all listening widgets—specifically the library and profile screens—to rebuild. This ensures that new quizzes and updated scores appear instantly across the app, providing a seamless and predictable user experience.
-
-### Profile Screen
-
-The `profile_screen.dart` has been updated to correctly display the user's quiz statistics. The screen is now a `StatefulWidget` that listens for changes in the `QuizViewModel`. This ensures that the number of quizzes taken, the average score, and the best score are all updated in real-time as the user completes quizzes.
-
-### Review Screen
-
-The `review_screen.dart` has been completely rewritten to correctly fetch and display due flashcards. The logic now fetches all flashcard sets from Firestore, and then uses the `SpacedRepetitionService` to identify and display only the cards that are actually due for review. The `SpacedRepetitionService` has also been updated to include a `getDueFlashcardIds` method, which returns a list of IDs of the flashcards that are due. This fixes the bug where the review screen was not functioning correctly.
-
-### Flashcard Creation and Scheduling
-
-The flashcard creation process has been corrected. When a user creates a new flashcard set in the `flashcards_screen.dart`, each flashcard is now assigned a unique ID. After the set is saved to Firestore, each flashcard is then scheduled for review using the `SpacedRepetitionService`. This ensures that new flashcards are immediately available for review in the "Review" screen.
-
-### Spaced Repetition
-
-The `SpacedRepetitionService` has been completely rewritten to correctly use the `SpacedRepetitionItem` model. All constructor, property, and method errors have been fixed. The service now correctly schedules new flashcards for review and updates them based on user performance.
-
-### Progress Tracking
-
-The progress screen now correctly displays the number of items due for review and the upcoming reviews. The `review_screen.dart` and `spaced_repetition_screen.dart` have been updated to correctly pass the `userId` to the `getDueFlashcards` function.
-
-### Flashcard Model
-
-The `Flashcard` model now includes an `id` field. The `edit_content_screen.dart` file has been updated to assign a unique ID to each new flashcard.
-
-### Data Flow
-
-The data flow has been corrected to ensure that the "Progress" and "Review" screens are always up-to-date. The `progress_screen.dart` now correctly loads the stats, and the `review_screen.dart` now correctly loads the due flashcards.
+This task is complete. The bug is fixed, and several key screens have been redesigned for a better user experience.

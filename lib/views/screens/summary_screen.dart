@@ -269,20 +269,10 @@ class SummaryScreenState extends State<SummaryScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800), 
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                child: _buildBody(theme),
-              ),
-              if (_state == SummaryState.loading || _isGeneratingQuiz)
-                Container(
-                  color: theme.scaffoldBackgroundColor.withAlpha(128),
-                  child: Center(
-                      child: CircularProgressIndicator(color: theme.colorScheme.onSurface)),
-                ),
-            ],
+          child: SingleChildScrollView(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: _buildBody(theme),
           ),
         ),
       )
@@ -351,17 +341,31 @@ class SummaryScreenState extends State<SummaryScreen> {
             ),
           ),
         const SizedBox(height: 32),
-        ElevatedButton(
+        ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: theme.colorScheme.primary,
             foregroundColor: theme.colorScheme.onPrimary,
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            minimumSize: const Size(double.infinity, 56),
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          onPressed: canGenerate ? _generateSummary : null,
-          child: const Text('Generate Summary',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          onPressed: canGenerate && _state != SummaryState.loading ? _generateSummary : null,
+          icon: _state == SummaryState.loading
+              ? Container(
+                  width: 24,
+                  height: 24,
+                  padding: const EdgeInsets.all(2.0),
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : const Icon(Icons.summarize_outlined),
+          label: _state == SummaryState.loading
+              ? const Text('Summarizing...',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+              : const Text('Generate Summary',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -447,16 +451,34 @@ class SummaryScreenState extends State<SummaryScreen> {
             ],
           ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: TextButton(
-            onPressed: _generateQuiz,
-            child: Text('Generate Quiz',
-                style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: theme.colorScheme.onPrimary,
+            minimumSize: const Size(double.infinity, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
+          onPressed: _isGeneratingQuiz ? null : _generateQuiz,
+          icon: _isGeneratingQuiz
+              ? Container(
+                  width: 24,
+                  height: 24,
+                  padding: const EdgeInsets.all(2.0),
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : const Icon(Icons.psychology_alt_outlined),
+          label: _isGeneratingQuiz
+              ? const Text(
+                  "Generating Quiz...",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                )
+              : const Text(
+                  "Generate Quiz",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
         ),
         const SizedBox(height: 16),
         if (!isViewingSaved)

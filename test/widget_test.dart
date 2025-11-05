@@ -1,26 +1,36 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:myapp/main.dart';
 import 'package:myapp/services/auth_service.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:myapp/services/local_database_service.dart';
+import 'package:myapp/services/notification_service.dart';
 
+// Create a mock for the AuthService
 class MockAuthService extends Mock implements AuthService {}
-
-class MockUser extends Mock implements User {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
 void main() {
-  testWidgets('app builds', (WidgetTester tester) async {
-    // Initialize the local database service before running the test
-    await LocalDatabaseService().init();
-
+  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    // Create a mock AuthService instance
     final mockAuthService = MockAuthService();
-    when(mockAuthService.authStateChanges).thenAnswer((_) => Stream.value(null));
-    when(mockAuthService.currentUser).thenReturn(null);
 
-    // MyApp now uses providers internally, so we don't pass arguments.
-    await tester.pumpWidget(MyApp(authService: mockAuthService));
-    
-    expect(find.byType(MyApp), findsOneWidget);
+    // When the user stream is accessed, return a stream that emits null.
+    when(mockAuthService.user).thenAnswer((_) => Stream.value(null));
+
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(MyApp(authService: mockAuthService, notificationService: NotificationService()));
+
+    // Verify that our counter starts at 0.
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
+
+    // Tap the '+' icon and trigger a frame.
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
+
+    // Verify that our counter has incremented.
+    expect(find.text('0'), findsNothing);
+    expect(find.text('1'), findsOneWidget);
   });
 }

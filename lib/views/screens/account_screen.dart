@@ -29,12 +29,7 @@ class AccountScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back_ios, color: theme.colorScheme.onSurface),
           onPressed: () => GoRouter.of(context).pop(),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, color: theme.colorScheme.onSurface),
-            onPressed: () => context.go('/account/settings'),
-          ),
-        ],
+        actions: [],
       ),
       body: Center(
         child: ConstrainedBox(
