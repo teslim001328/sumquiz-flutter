@@ -25,7 +25,7 @@ class AuthService {
     });
   }
 
-  Future<void> signInWithGoogle() async {
+  Future<void> signInWithGoogle({String? referralCode}) async {
     try {
       final googleUser = await _googleSignIn.authenticate();
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
@@ -48,6 +48,10 @@ class AuthService {
             email: user.email ?? '',
           );
           await _firestoreService.saveUserData(newUser);
+
+          if (referralCode != null && referralCode.isNotEmpty) {
+            await _referralService.applyReferralCode(referralCode, user.uid);
+          }
         } else {
           developer.log('Existing user signed in with Google: ${user.uid}');
         }

@@ -1,156 +1,266 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../services/auth_service.dart';
+import '../../services/referral_service.dart';
 
-class ReferralScreen extends StatelessWidget {
+/// A completely redesigned screen for the referral program.
+///
+/// This screen provides a modern, interactive, and informative UI for the user
+/// to engage with the referral system. It displays their unique referral code,
+/// allows for easy copying and sharing, and shows real-time statistics on their
+/// referral performance.
+class ReferralScreen extends StatefulWidget {
   const ReferralScreen({super.key});
+
+  @override
+  State<ReferralScreen> createState() => _ReferralScreenState();
+}
+
+class _ReferralScreenState extends State<ReferralScreen> {
+  late Future<String> _referralCodeFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch the referral code when the screen initializes.
+    // This is a one-time fetch, ideal for data that doesn't change during the screen's lifecycle.
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final referralService = Provider.of<ReferralService>(context, listen: false);
+    _referralCodeFuture = referralService.generateReferralCode(authService.currentUser!.uid);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const referralCode = 'ABC-123'; // This would be dynamically fetched
+    final referralService = Provider.of<ReferralService>(context);
+    final authService = Provider.of<AuthService>(context);
+    final uid = authService.currentUser!.uid;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Refer a Friend'),
-        centerTitle: true,
+        backgroundColor: theme.colorScheme.surface,
         elevation: 0,
-        backgroundColor: Colors.transparent,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(theme),
-            const SizedBox(height: 32),
-            _buildReferralCodeSection(context, theme, referralCode),
-            const SizedBox(height: 40),
+            // --- Header Section ---
             Text(
-              'How It Works',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              'Invite Friends, Get Rewards!',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildStep(
-              theme: theme,
-              icon: Icons.person_add_alt_1_outlined,
-              title: 'Invite Friends',
-              description: 'Share your unique referral code with friends.',
+            const SizedBox(height: 12),
+            Text(
+              'Share your unique code with friends. When they sign up, they get 3 free Pro days, and you earn rewards after just 3 referrals!',
+              style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            _buildStep(
-              theme: theme,
-              icon: Icons.card_giftcard_outlined,
-              title: 'Friend Gets a Reward',
-              description: 'They get a 3-day Pro trial when they sign up.',
+            const SizedBox(height: 32),
+
+            // --- Referral Code Card ---
+            _buildReferralCodeCard(theme, _referralCodeFuture),
+            
+            const SizedBox(height: 40),
+
+            // --- Stats Section ---
+            Text(
+              'Your Progress',
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            _buildStep(
-              theme: theme,
-              icon: Icons.workspace_premium_outlined,
-              title: 'You Get a Reward',
-              description: 'You get a week of Pro for every 3 friends who join.',
-            ),
+            const SizedBox(height: 16),
+            _buildStatsGrid(theme, referralService, uid),
+
+            const SizedBox(height: 40),
+            
+            // --- How It Works Section ---
+            _buildHowItWorks(theme),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  /// Builds the interactive card displaying the user's referral code.
+  Widget _buildReferralCodeCard(ThemeData theme, Future<String> codeFuture) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.people_alt_outlined,
-            size: 60,
-            color: theme.colorScheme.onPrimaryContainer,
+          Text(
+            'YOUR UNIQUE CODE',
+            style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Invite Friends, Get Rewards',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onPrimaryContainer,
+          FutureBuilder<String>(
+            future: codeFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircularProgressIndicator();
+              }
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Text('Could not load code');
+              }
+              final code = snapshot.data!;
+              return InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Referral code copied to clipboard!')),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        code,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.copy_all_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.share_rounded),
+            label: const Text('Share Code'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
+            onPressed: () async {
+              final code = await _referralCodeFuture;
+              Share.share(
+                'Join me on SumQuiz and get 3 free Pro days! Use my code: $code\n\nDownload the app here: [App Store Link]', 
+                subject: 'Get Free Pro Days on SumQuiz!'
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildReferralCodeSection(BuildContext context, ThemeData theme, String referralCode) {
-    return Column(
+  /// Builds the grid displaying real-time referral statistics.
+  Widget _buildStatsGrid(ThemeData theme, ReferralService referralService, String uid) {
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
       children: [
-        Text(
-          'Your Unique Referral Code',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: referralCode));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Referral code copied to clipboard!')),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  referralCode,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.copy_all_outlined,
-                  color: theme.colorScheme.primary,
-                ),
-              ],
-            ),
-          ),
-        ),
+        _buildStatCard(theme, 'Pending', referralService.getReferralCount(uid), Icons.people_outline_rounded),
+        _buildStatCard(theme, 'Total Friends', referralService.getTotalReferralCount(uid), Icons.group_add_rounded),
+        _buildStatCard(theme, 'Rewards Earned', referralService.getReferralRewards(uid), Icons.card_giftcard_rounded),
       ],
     );
   }
 
-  Widget _buildStep({required ThemeData theme, required IconData icon, required String title, required String description}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
+  /// Builds a single card for a statistic.
+  Widget _buildStatCard(ThemeData theme, String label, Stream<int> stream, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.secondaryContainer,
-            ),
-            child: Icon(icon, color: theme.colorScheme.onSecondaryContainer),
+          Icon(icon, size: 28, color: theme.colorScheme.primary),
+          const SizedBox(height: 8),
+          StreamBuilder<int>(
+            stream: stream,
+            builder: (context, snapshot) {
+              final value = snapshot.data ?? 0;
+              return Text(
+                value.toString(),
+                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              );
+            },
           ),
-          const SizedBox(width: 20),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the section explaining how the referral process works.
+  Widget _buildHowItWorks(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'How It Works',
+          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        _buildStep(theme, Icons.one_k, 'Share Your Code', 'Send your unique code to friends via text, email, or social media.'),
+        _buildStep(theme, Icons.two_k, 'Friend Signs Up', 'Your friend enters your code during signup and instantly receives 3 Pro days.'),
+        _buildStep(theme, Icons.three_k, 'You Get Rewarded', 'After 3 friends sign up, you earn a reward: 7 extra days of Pro subscription!'),
+      ],
+    );
+  }
+
+  /// Builds a single step in the 'How It Works' section.
+  Widget _buildStep(ThemeData theme, IconData icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: theme.colorScheme.primary, size: 32),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
+                Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(description, style: theme.textTheme.bodyMedium),
+                Text(description, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
           ),

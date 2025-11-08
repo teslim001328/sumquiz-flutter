@@ -4,18 +4,18 @@ class UserModel {
   final String uid;
   final String email;
   final String displayName;
-  final DateTime? proSubscriptionExpires;
+  final DateTime? subscriptionExpiry;
 
   UserModel({
     required this.uid,
     required this.email,
     required this.displayName,
-    this.proSubscriptionExpires,
+    this.subscriptionExpiry,
   });
 
   bool get isPro {
     // A user is considered "Pro" if the expiry date exists and is in the future.
-    return proSubscriptionExpires != null && proSubscriptionExpires!.isAfter(DateTime.now());
+    return subscriptionExpiry != null && subscriptionExpiry!.isAfter(DateTime.now());
   }
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -24,7 +24,7 @@ class UserModel {
       uid: doc.id,
       email: data['email'] ?? '',
       displayName: data['displayName'] ?? '',
-      proSubscriptionExpires: (data['proSubscriptionExpires'] as Timestamp?)?.toDate(),
+      subscriptionExpiry: (data['subscriptionExpiry'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -32,7 +32,7 @@ class UserModel {
     return {
       'email': email,
       'displayName': displayName,
-      if (proSubscriptionExpires != null) 'proSubscriptionExpires': Timestamp.fromDate(proSubscriptionExpires!),
+      if (subscriptionExpiry != null) 'subscriptionExpiry': Timestamp.fromDate(subscriptionExpiry!),
     };
   }
 
@@ -40,13 +40,13 @@ class UserModel {
     String? uid,
     String? email,
     String? displayName,
-    DateTime? proSubscriptionExpires,
+    DateTime? subscriptionExpiry,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
-      proSubscriptionExpires: proSubscriptionExpires ?? this.proSubscriptionExpires,
+      subscriptionExpiry: subscriptionExpiry ?? this.subscriptionExpiry,
     );
   }
 }

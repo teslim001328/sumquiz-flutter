@@ -1,6 +1,8 @@
+
 import 'package:flutter/material.dart';
 import 'package:myapp/services/auth_service.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 enum AuthMode { Login, SignUp }
 
@@ -11,21 +13,29 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _referralCodeController = TextEditingController(); // New controller
+  final _referralCodeController = TextEditingController();
   AuthMode _authMode = AuthMode.Login;
   bool _isLoading = false;
+
+  // Consistent color palette from Onboarding
+  static const Color kBackgroundColor = Colors.black;
+  static const Color kPrimaryTextColor = Colors.white;
+  static const Color kSecondaryTextColor = Color(0xFFB3B3B3);
+  static const Color kButtonColor = Colors.white;
+  static const Color kButtonTextColor = Colors.black;
+  static const Color kTextFieldFillColor = Color(0xFF1A1A1A);
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _fullNameController.dispose();
-    _referralCodeController.dispose(); // Dispose the new controller
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -53,12 +63,11 @@ class _AuthScreenState extends State<AuthScreen> {
           _passwordController.text.trim(),
         );
       } else {
-        // Pass the referral code to the sign-up method
         await authService.signUpWithEmailAndPassword(
           _emailController.text.trim(),
           _passwordController.text.trim(),
           _fullNameController.text.trim(),
-          _referralCodeController.text.trim(), // Pass the code
+          _referralCodeController.text.trim(),
         );
       }
     } catch (e) {
@@ -85,7 +94,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithGoogle();
+      await authService.signInWithGoogle(referralCode: _referralCodeController.text.trim());
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -101,55 +110,26 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  Future<void> _resetPassword() async {
-    if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email to reset password.')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.sendPasswordResetEmail(_emailController.text.trim());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password reset email sent.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send reset email: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: _authMode == AuthMode.Login
-                  ? _buildLoginForm(theme)
-                  : _buildSignUpForm(theme),
+      backgroundColor: kBackgroundColor,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: _authMode == AuthMode.Login
+                    ? _buildLoginForm()
+                    : _buildSignUpForm(),
+              ),
             ),
           ),
         ),
@@ -157,38 +137,46 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildLoginForm(ThemeData theme) {
+  Widget _buildLoginForm() {
     return Form(
       key: _formKey,
       child: Column(
+        key: const ValueKey('loginForm'),
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'SUMQUIZ',
-            style: theme.textTheme.headlineLarge?.copyWith(
+          const Text(
+            'Welcome Back',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              color: kPrimaryTextColor,
+              fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Instant Clarity. Lightning Fast.',
-            style: theme.textTheme.titleMedium,
+          const Text(
+            'Sign in to continue your learning journey.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: kSecondaryTextColor,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 48),
           _buildTextField(
-            theme: theme,
             controller: _emailController,
-            labelText: 'Email or Username',
+            labelText: 'Email Address',
+            keyboardType: TextInputType.emailAddress,
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your email or username';
+              if (value == null || !value.contains('@')) {
+                return 'Please enter a valid email';
               }
               return null;
             },
           ),
           const SizedBox(height: 16),
           _buildTextField(
-            theme: theme,
             controller: _passwordController,
             labelText: 'Password',
             obscureText: true,
@@ -199,39 +187,49 @@ class _AuthScreenState extends State<AuthScreen> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-              onPressed: _resetPassword,
-              child: Text(
-                'Forgot Password?',
-                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
-              ),
-            ),
-          ),
           const SizedBox(height: 32),
-          _buildAuthButton('Login', _submit, theme),
+          _buildAuthButton('Sign In', _submit),
+          const SizedBox(height: 24),
+          _buildGoogleButton(),
           const SizedBox(height: 24),
           _buildSwitchAuthModeButton(
             'Don\'t have an account? ',
             'Sign Up',
             _switchAuthMode,
-            theme,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSignUpForm(ThemeData theme) {
+  Widget _buildSignUpForm() {
     return Form(
       key: _formKey,
       child: Column(
+        key: const ValueKey('signUpForm'),
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+           const Text(
+            'Create Account',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              color: kPrimaryTextColor,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Start your learning adventure with us.',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: kSecondaryTextColor,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 48),
           _buildTextField(
-            theme: theme,
             controller: _fullNameController,
             labelText: 'Full Name',
             validator: (value) {
@@ -243,47 +241,43 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           const SizedBox(height: 16),
           _buildTextField(
-            theme: theme,
             controller: _emailController,
             labelText: 'Email Address',
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
               if (value == null || !value.contains('@')) {
-                return 'Please enter a valid email address';
+                return 'Please enter a valid email';
               }
               return null;
             },
           ),
           const SizedBox(height: 16),
           _buildTextField(
-            theme: theme,
             controller: _passwordController,
             labelText: 'Password',
             obscureText: true,
             validator: (value) {
               if (value == null || value.length < 6) {
-                return 'Password must be at least 6 characters long';
+                return 'Password must be at least 6 characters';
               }
               return null;
             },
           ),
           const SizedBox(height: 16),
           _buildTextField(
-            theme: theme,
             controller: _referralCodeController,
             labelText: 'Referral Code (Optional)',
-            validator: null, // This field is optional
+            validator: null, // Optional field
           ),
           const SizedBox(height: 32),
-          _buildAuthButton('Sign Up', _submit, theme),
+          _buildAuthButton('Sign Up', _submit),
           const SizedBox(height: 24),
-          _buildGoogleButton(theme),
+           _buildGoogleButton(),
           const SizedBox(height: 24),
           _buildSwitchAuthModeButton(
             'Already have an account? ',
-            'Login',
+            'Sign In',
             _switchAuthMode,
-            theme,
           ),
         ],
       ),
@@ -291,62 +285,65 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildTextField({
-    required ThemeData theme,
     required TextEditingController controller,
     required String labelText,
     bool obscureText = false,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          labelText,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+    return TextFormField(
+      controller: controller,
+      style: const TextStyle(fontFamily: 'Inter', color: kPrimaryTextColor),
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: const TextStyle(fontFamily: 'Inter', color: kSecondaryTextColor),
+        filled: true,
+        fillColor: kTextFieldFillColor,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[800]!),
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: theme.inputDecorationTheme.fillColor,
-            hintText: 'Enter your $labelText',
-            hintStyle: theme.inputDecorationTheme.hintStyle,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-          ),
-          style: TextStyle(color: theme.colorScheme.onSurface),
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          validator: validator,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: kButtonColor),
         ),
-      ],
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+      ),
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      validator: validator,
     );
   }
 
-  Widget _buildAuthButton(String text, VoidCallback onPressed, ThemeData theme) {
+  Widget _buildAuthButton(String text, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: kButtonColor,
+          foregroundColor: kButtonTextColor,
+          padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         onPressed: _isLoading ? null : onPressed,
         child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? const SizedBox(
+              height: 24, width: 24, 
+              child: CircularProgressIndicator(color: kButtonTextColor, strokeWidth: 3)
+            )
             : Text(
                 text,
                 style: const TextStyle(
+                  fontFamily: 'Inter',
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -355,24 +352,24 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildGoogleButton(ThemeData theme) {
+  Widget _buildGoogleButton() {
     return SizedBox(
       width: double.infinity,
-      child: OutlinedButton(
+      child: OutlinedButton.icon(
+        icon: SvgPicture.asset('assets/icons/google_logo.svg', height: 20),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: theme.colorScheme.onSurface.withOpacity(0.54)),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          side: const BorderSide(color: kSecondaryTextColor),
+          padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
         onPressed: _isLoading ? null : _googleSignIn,
-        child: _isLoading
-            ? const CircularProgressIndicator()
-            : Text(
+        label: const Text(
                 'Continue with Google',
                 style: TextStyle(
-                  color: theme.colorScheme.onSurface,
+                  fontFamily: 'Inter',
+                  color: kPrimaryTextColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -382,22 +379,26 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildSwitchAuthModeButton(
-      String text, String buttonText, VoidCallback onPressed, ThemeData theme) {
-    return TextButton(
-      onPressed: onPressed,
-      child: RichText(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7)),
-          children: [
-            TextSpan(
-              text: buttonText,
-              style: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
+      String text, String buttonText, VoidCallback onPressed) {
+    return Center(
+      child: TextButton(
+        onPressed: onPressed,
+        child: RichText(
+          text: TextSpan(
+            text: text,
+            style: const TextStyle(fontFamily: 'Inter', color: kSecondaryTextColor, fontSize: 15),
+            children: [
+              TextSpan(
+                text: buttonText,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  color: kPrimaryTextColor,
+                  fontWeight: FontWeight.bold,
+                   fontSize: 15,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

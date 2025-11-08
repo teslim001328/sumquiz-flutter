@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:developer' as developer;
 
@@ -29,6 +30,23 @@ class SubscriptionService {
   static const String _annualId = 'sumquiz_annual';
   static const String _lifetimeId = 'sumquiz_lifetime';
   static const Set<String> _kIds = {_monthlyId, _annualId, _lifetimeId};
+
+  // --- SINGLE SOURCE OF TRUTH FOR PRO STATUS ---
+  Stream<bool> isProStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots().map((snapshot) {
+      if (!snapshot.exists) return false;
+      final data = snapshot.data() as Map<String, dynamic>;
+      // Check for 'subscriptionExpiry' field
+      if (data.containsKey('subscriptionExpiry')) {
+        // Lifetime access is handled by a null expiry date after a purchase
+        if (data['subscriptionExpiry'] == null) return true;
+        
+        final expiryDate = (data['subscriptionExpiry'] as Timestamp).toDate();
+        return expiryDate.isAfter(DateTime.now());
+      }
+      return false;
+    }).onErrorReturn(false);
+  }
 
   void initialize(String uid) {
     final purchaseUpdated = _inAppPurchase.purchaseStream;
@@ -105,11 +123,12 @@ class SubscriptionService {
     WriteBatch batch = _firestore.batch();
     DocumentReference userRef = _firestore.collection('users').doc(uid);
 
+    // *** MODIFIED: Using the standardized 'subscriptionExpiry' field ***
     batch.set(
         userRef,
         {
           'isPro': true,
-          'proSubscriptionExpires':
+          'subscriptionExpiry':
               expiryDate != null ? Timestamp.fromDate(expiryDate) : null,
           'purchaseId': purchaseDetails.purchaseID,
           'productId': purchaseDetails.productID,

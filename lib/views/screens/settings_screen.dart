@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:line_awesome_flutter/line_awesome_flutter.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -21,7 +20,7 @@ class SettingsScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(LineAwesomeIcons.chevron_circle_left, color: theme.iconTheme.color),
+          icon: Icon(Icons.arrow_back, color: theme.iconTheme.color),
           onPressed: () => context.pop(),
         ),
       ),
@@ -35,14 +34,14 @@ class SettingsScreen extends StatelessWidget {
               _buildSectionTitle(context, 'Account'),
               _buildSettingsCard(
                 context,
-                icon: LineAwesomeIcons.user_circle,
+                icon: Icons.account_circle,
                 title: 'Account',
                 subtitle: 'Manage your profile and login info',
                 onTap: () => context.push('/settings/account'),
               ),
               _buildSettingsCard(
                 context,
-                icon: LineAwesomeIcons.user_lock,
+                icon: Icons.security,
                 title: 'Privacy & About',
                 subtitle: 'Legal, support & app info',
                 onTap: () => context.push('/settings/privacy-about'),
@@ -51,14 +50,14 @@ class SettingsScreen extends StatelessWidget {
               _buildSectionTitle(context, 'Content & Display'),
               _buildSettingsCard(
                 context,
-                icon: LineAwesomeIcons.paint_brush,
+                icon: Icons.palette,
                 title: 'Preferences',
                 subtitle: 'Adjust app experience & appearance',
                 onTap: () => context.push('/settings/preferences'),
               ),
               _buildSettingsCard(
                 context,
-                icon: LineAwesomeIcons.server,
+                icon: Icons.storage,
                 title: 'Data & Storage',
                 subtitle: 'Manage offline files and cache',
                 onTap: () => context.push('/settings/data-storage'),
@@ -114,7 +113,7 @@ class SettingsScreen extends StatelessWidget {
             style:
                 theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         subtitle: Text(subtitle, style: theme.textTheme.bodyMedium),
-        trailing: Icon(LineAwesomeIcons.chevron_circle_right,
+        trailing: Icon(Icons.arrow_forward_ios,
             color: theme.iconTheme.color, size: 18),
       ),
     );
@@ -134,7 +133,7 @@ class SettingsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              Icon(LineAwesomeIcons.gem,
+              Icon(Icons.diamond_outlined,
                   color: theme.colorScheme.onPrimary, size: 36),
               const SizedBox(width: 20),
               Expanded(
@@ -157,7 +156,7 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(LineAwesomeIcons.chevron_circle_right,
+              Icon(Icons.arrow_forward_ios,
                   color: theme.colorScheme.onPrimary, size: 20),
             ],
           ),
@@ -180,7 +179,7 @@ class SettingsScreen extends StatelessWidget {
             color: theme.colorScheme.secondary.withAlpha(26),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(LineAwesomeIcons.gifts,
+          child: Icon(Icons.card_giftcard,
               color: theme.colorScheme.secondary, size: 24),
         ),
         title: Text('Refer a Friend',
@@ -188,7 +187,7 @@ class SettingsScreen extends StatelessWidget {
                 theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         subtitle: Text('Get rewards for inviting friends',
             style: theme.textTheme.bodyMedium),
-        trailing: Icon(LineAwesomeIcons.chevron_circle_right,
+        trailing: Icon(Icons.arrow_forward_ios,
             color: theme.iconTheme.color, size: 18),
       ),
     );
